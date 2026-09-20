@@ -1,0 +1,314 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Medical Consultations & Appointments - AlzPredictor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Top Hero Banner -->
+    <div class="col-12">
+        <div class="nuvica-hero p-5 text-center position-relative overflow-hidden">
+            <span class="badge bg-white text-primary rounded-pill px-3 py-2 fw-semibold mb-3 shadow-sm">
+                Verified Medical Care Specialists
+            </span>
+            <h1 class="display-5 fw-bold text-dark mb-3">Book Your Medical Consultation</h1>
+            <p class="lead text-secondary mx-auto mb-4" style="max-width: 680px;">
+                Connect with world-class neurologists, geriatric specialists, and cardiologists for early intervention, cognitive rehabilitation, and personalized treatment plans.
+            </p>
+            
+            <!-- Quick Filter Chips -->
+            <div class="d-flex flex-wrap justify-content-center gap-2" id="deptFilterChips">
+                <button type="button" class="btn btn-sm btn-primary rounded-pill px-3 filter-dept-btn active" data-dept="all">
+                    All Departments
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-dept-btn" data-dept="Neurology">
+                    🧠 Neurology
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-dept-btn" data-dept="Geriatrics">
+                    👴 Geriatrics
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-dept-btn" data-dept="Cardiology">
+                    ❤️ Cardiology
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-dept-btn" data-dept="Gastroenterology">
+                    🥗 Gastroenterology
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3 filter-dept-btn" data-dept="General Medicine">
+                    🩺 General Medicine
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctors Grid -->
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h3 class="fw-bold text-dark mb-0">Available Specialists</h3>
+                <small class="text-muted">Choose your preferred doctor to schedule an online or in-clinic visit</small>
+            </div>
+            <div class="badge bg-light text-dark border px-3 py-2 rounded-pill">
+                <span id="doctorCount">{{ doctors|length }}</span> Doctors Available
+            </div>
+        </div>
+
+        <div class="row g-4" id="doctorsContainer">
+            {% for doc in doctors %}
+            <div class="col-md-6 col-lg-4 doctor-grid-item" data-dept="{{ doc.department }}">
+                <div class="card h-100 border-0 shadow-sm rounded-4 doctor-card hover-lift transition-all p-4">
+                    <div class="d-flex align-items-start gap-3 mb-3">
+                        <img src="{{ doc.avatar_url|default:'https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=200&q=80' }}" 
+                             alt="{{ doc.name }}" 
+                             class="rounded-circle border border-2 border-primary-subtle shadow-sm object-fit-cover" 
+                             style="width: 72px; height: 72px;">
+                        <div class="flex-grow-1">
+                            <div class="d-flex align-items-center gap-1">
+                                <h5 class="fw-bold text-dark mb-0">{{ doc.name }}</h5>
+                                <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill py-0 px-1 small" title="Verified Specialist">✓</span>
+                            </div>
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-2 py-1 small my-1">
+                                {{ doc.department }}
+                            </span>
+                            <div class="small text-muted">{{ doc.qualification }}</div>
+                        </div>
+                    </div>
+
+                    <p class="small text-secondary mb-3" style="min-height: 40px;">
+                        {{ doc.bio|default:"Specialized clinical consultant committed to evidence-based neurocognitive healthcare." }}
+                    </p>
+
+                    <div class="d-flex justify-content-between align-items-center p-2 rounded-3 bg-light mb-3 small">
+                        <div>
+                            <span class="text-muted d-block">Experience</span>
+                            <strong class="text-dark">{{ doc.experience_years }}+ Years</strong>
+                        </div>
+                        <div>
+                            <span class="text-muted d-block">Consultation Fee</span>
+                            <strong class="text-primary">${{ doc.consultation_fee }}</strong>
+                        </div>
+                        <div>
+                            <span class="text-muted d-block">Rating</span>
+                            <strong class="text-warning">★ {{ doc.rating }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="mt-auto">
+                        <button type="button" 
+                                class="btn btn-primary w-100 rounded-pill py-2 fw-semibold d-flex justify-content-center align-items-center gap-2 btn-open-booking-modal"
+                                data-doctor-id="{{ doc.id }}"
+                                data-doctor-name="{{ doc.name }}"
+                                data-doctor-dept="{{ doc.department }}"
+                                data-doctor-fee="{{ doc.consultation_fee }}">
+                            <span>Book Consultation</span>
+                            <span>↗</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5 bg-white rounded-4 shadow-sm border p-4">
+                    <div class="fs-1 text-muted mb-2">🩺</div>
+                    <h5 class="fw-bold text-dark">No specialists found</h5>
+                    <p class="text-muted">Doctors will appear here as soon as our clinic schedules are populated.</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- My Booked Appointments Section -->
+    <div class="col-12 mt-5">
+        <div class="card border-0 shadow-sm rounded-4 p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="fw-bold text-dark mb-0">My Consultations</h3>
+                    <small class="text-muted">Overview of your upcoming and past medical sessions</small>
+                </div>
+                <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-2 fw-semibold">
+                    {{ appointments|length }} Booked Sessions
+                </span>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="border-0 rounded-start">Doctor</th>
+                            <th class="border-0">Department</th>
+                            <th class="border-0">Date & Slot</th>
+                            <th class="border-0">Reason</th>
+                            <th class="border-0">Status</th>
+                            <th class="border-0 text-end rounded-end">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="myAppointmentsTableBody">
+                        {% for appt in appointments %}
+                        <tr id="appt-row-{{ appt.id }}">
+                            <td>
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fw-bold" style="width: 38px; height: 38px;">
+                                        {{ appt.doctor.name|slice:":1" }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold text-dark">{{ appt.doctor.name }}</div>
+                                        <div class="small text-muted">{{ appt.doctor.qualification }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-secondary-subtle text-secondary rounded-pill px-2">
+                                    {{ appt.doctor.department }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="fw-semibold text-dark">{{ appt.appointment_date|date:"M d, Y" }}</div>
+                                <div class="small text-muted">{{ appt.time_slot }}</div>
+                            </td>
+                            <td>
+                                <span class="small text-secondary">{{ appt.reason|default:"General Clinical Evaluation" }}</span>
+                            </td>
+                            <td>
+                                {% if appt.status == 'Confirmed' %}
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1">Confirmed</span>
+                                {% elif appt.status == 'Scheduled' %}
+                                    <span class="badge bg-info-subtle text-info border border-info-subtle rounded-pill px-2 py-1">Scheduled</span>
+                                {% elif appt.status == 'Completed' %}
+                                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1">Completed</span>
+                                {% else %}
+                                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">Cancelled</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if appt.status != 'Cancelled' and appt.status != 'Completed' %}
+                                <button type="button" 
+                                        class="btn btn-sm btn-outline-danger rounded-pill px-3 cancel-appt-btn"
+                                        data-appointment-id="{{ appt.id }}">
+                                    Cancel
+                                </button>
+                                {% else %}
+                                <span class="text-muted small">—</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr id="emptyApptRow">
+                            <td colspan="6" class="text-center py-5 text-muted">
+                                <div class="fs-2 mb-2">📅</div>
+                                <p class="mb-0">You have no upcoming appointments. Click on any doctor above to book your first consultation.</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Department Filtering
+    const filterBtns = document.querySelectorAll('.filter-dept-btn');
+    const doctorItems = document.querySelectorAll('.doctor-grid-item');
+    const doctorCountEl = document.getElementById('doctorCount');
+
+    filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            filterBtns.forEach(b => {
+                b.classList.remove('btn-primary', 'active');
+                b.classList.add('btn-outline-secondary');
+            });
+            btn.classList.remove('btn-outline-secondary');
+            btn.classList.add('btn-primary', 'active');
+
+            const selectedDept = btn.getAttribute('data-dept');
+            let visibleCount = 0;
+
+            doctorItems.forEach(item => {
+                const itemDept = item.getAttribute('data-dept');
+                if (selectedDept === 'all' || itemDept === selectedDept) {
+                    item.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+
+            if (doctorCountEl) doctorCountEl.innerText = visibleCount;
+        });
+    });
+
+    // 2. Open Appointment Modal
+    document.querySelectorAll('.btn-open-booking-modal').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const docId = btn.getAttribute('data-doctor-id');
+            const docName = btn.getAttribute('data-doctor-name');
+            const docDept = btn.getAttribute('data-doctor-dept');
+
+            if (window.AppointmentModalManager) {
+                window.AppointmentModalManager.openModal({
+                    id: docId,
+                    name: docName,
+                    department: docDept
+                });
+            } else {
+                const select = document.getElementById('modalDoctorSelect');
+                if (select) select.value = docId;
+                const modalEl = document.getElementById('globalAppointmentModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+                }
+            }
+        });
+    });
+
+    // 3. Appointment Cancellation via API POST
+    document.querySelectorAll('.cancel-appt-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const apptId = btn.getAttribute('data-appointment-id');
+            if (!confirm('Are you sure you want to cancel this appointment?')) return;
+
+            try {
+                btn.disabled = true;
+                btn.innerText = 'Cancelling...';
+
+                const response = await fetch(`/api/v1/appointments/${apptId}/cancel/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': window.CookieManager ? window.CookieManager.get('csrftoken') : ''
+                    }
+                });
+
+                if (response.ok) {
+                    if (window.ToastManager) {
+                        window.ToastManager.success('Appointment cancelled successfully.');
+                    }
+                    const row = document.getElementById(`appt-row-${apptId}`);
+                    if (row) {
+                        const statusCell = row.cells[4];
+                        const actionCell = row.cells[5];
+                        statusCell.innerHTML = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill px-2 py-1">Cancelled</span>';
+                        actionCell.innerHTML = '<span class="text-muted small">—</span>';
+                    }
+                } else {
+                    const err = await response.json();
+                    alert(err.detail || 'Failed to cancel appointment.');
+                    btn.disabled = false;
+                    btn.innerText = 'Cancel';
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Network error while cancelling appointment.');
+                btn.disabled = false;
+                btn.innerText = 'Cancel';
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

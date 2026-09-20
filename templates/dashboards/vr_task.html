@@ -1,0 +1,476 @@
+{% extends 'base.html' %}
+
+{% block title %}VR Cognitive Assessment - AlzPredictor{% endblock %}
+
+{% block extra_head %}
+<!-- Include Three.js for 3D/VR rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+    #vr-viewport {
+        width: 100%;
+        height: 380px;
+        background-color: #0b0f19;
+        border-radius: 12px;
+        overflow: hidden;
+        border: 2px solid var(--border-color);
+        position: relative;
+    }
+    .game-control-btn {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+        border-radius: 50%;
+    }
+    .question-btn {
+        transition: all 0.2s ease;
+    }
+    .question-btn:hover {
+        transform: scale(1.03);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        
+        <!-- Section 1: Novice-Friendly Welcome & Onboarding -->
+        <div class="glass-card p-5 text-center" id="onboardingCard">
+            <div class="fs-1 text-info mb-3">🎮</div>
+            <h1 class="display-6 fw-bold text-gradient mb-3">Interactive Cognitive Memory Task</h1>
+            <p class="lead text-muted mb-4">
+                Welcome! This is a simple, friendly 3D challenge designed to test spatial navigation and object recall. Completing this task will automatically fill in the cognitive score on your patient baseline.
+            </p>
+            
+            <div class="row justify-content-center g-3 text-start mb-4">
+                <div class="col-md-5 glass-card p-3 m-2">
+                    <strong class="text-info">Step 1: Spatial Path navigation</strong>
+                    <p class="small text-muted mb-0 mt-1">Guide the blue ball along the bright pathway to the glowing checkpoint box using arrow keys or on-screen buttons.</p>
+                </div>
+                <div class="col-md-5 glass-card p-3 m-2">
+                    <strong class="text-warning">Step 2: Shape Memory Recall</strong>
+                    <p class="small text-muted mb-0 mt-1">Memorize the locations and shapes of floating blocks before they disappear, then identify them.</p>
+                </div>
+            </div>
+
+            <button class="btn btn-primary-gradient btn-lg px-5" id="startGameBtn">Start Cognitive Game</button>
+        </div>
+
+        <!-- Section 2: Game Viewport (Hidden until started) -->
+        <div class="glass-card p-4 d-none" id="gameplayCard">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold mb-0 text-gradient-cyan" id="gameTaskTitle">Task 1: Spatial Path Memory</h4>
+                <div class="badge bg-secondary p-2" id="gameTimerBadge">Time: 0.0s</div>
+            </div>
+
+            <!-- 3D Canvas Container -->
+            <div id="vr-viewport" class="mb-4">
+                <!-- Overlay message inside canvas -->
+                <div class="position-absolute top-50 start-50 translate-middle text-center w-75 p-3 rounded bg-dark bg-opacity-75" 
+                     id="canvasInstructionOverlay" style="border: 1px solid var(--border-color); backdrop-filter: blur(4px);">
+                    <h5 class="fw-bold text-info" id="overlayTitle">Are you ready?</h5>
+                    <p class="small text-muted mb-0" id="overlayDesc">Use WASD, Arrow keys, or the controls below to steer.</p>
+                </div>
+            </div>
+
+            <!-- Task 1: Navigation Controls (Visible only in Task 1) -->
+            <div id="navigationControls" class="text-center mb-3">
+                <p class="text-muted small mb-2">Guide the blue ball to the glowing turquoise cube!</p>
+                <div class="d-inline-block">
+                    <div>
+                        <button class="btn btn-outline-info game-control-btn m-1" id="ctrlUp">▲</button>
+                    </div>
+                    <div>
+                        <button class="btn btn-outline-info game-control-btn m-1" id="ctrlLeft">◀</button>
+                        <button class="btn btn-outline-info game-control-btn m-1" id="ctrlDown">▼</button>
+                        <button class="btn btn-outline-info game-control-btn m-1" id="ctrlRight">▶</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Task 2: Recall Selection Buttons (Hidden until Task 2 completes view) -->
+            <div id="recallQuestionsBlock" class="d-none border-top border-secondary pt-3 text-center">
+                <h5 class="fw-bold text-warning mb-3" id="recallQuestionText">Which shape was located on the left?</h5>
+                <div class="d-flex justify-content-center gap-3" id="recallOptionsContainer">
+                    <!-- Buttons dynamically populated -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 3: Submitting / Loading Screen -->
+        <div class="glass-card p-5 text-center d-none" id="submittingCard">
+            <div class="spinner-border text-info mb-3" style="width: 3.5rem; height: 3.5rem;" role="status"></div>
+            <h4 class="fw-bold text-gradient-cyan">Analyzing Game Performance...</h4>
+            <p class="text-muted">Calculating spatial metrics and auto-filling your clinical profile.</p>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // UI Elements
+        const onboardingCard = document.getElementById('onboardingCard');
+        const gameplayCard = document.getElementById('gameplayCard');
+        const submittingCard = document.getElementById('submittingCard');
+        const startBtn = document.getElementById('startGameBtn');
+        const taskTitle = document.getElementById('gameTaskTitle');
+        const timerBadge = document.getElementById('gameTimerBadge');
+        
+        const overlay = document.getElementById('canvasInstructionOverlay');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlayDesc = document.getElementById('overlayDesc');
+        
+        const navControls = document.getElementById('navigationControls');
+        const recallBlock = document.getElementById('recallQuestionsBlock');
+        const questionText = document.getElementById('recallQuestionText');
+        const optionsContainer = document.getElementById('recallOptionsContainer');
+
+        // Three.js Variables
+        let scene, camera, renderer, clock;
+        let playerBall, targetCube, pathwayLine;
+        let shapeLeft, shapeCenter, shapeRight;
+        
+        // Game State Variables
+        let gameActive = false;
+        let currentTask = 1; // 1 = Navigation, 2 = Object Recall Memorization, 3 = Recall Quiz
+        let secondsElapsed = 0.0;
+        let timerInterval = null;
+        
+        // Performance Telemetry
+        let score = 100;
+        let navigationErrors = 0; // Out of path bounds occurrences
+        let quizErrors = 0;
+        let timeTaken = 0;
+
+        function startTimer() {
+            secondsElapsed = 0.0;
+            timerInterval = setInterval(() => {
+                secondsElapsed += 0.1;
+                timerBadge.innerText = `Time: ${secondsElapsed.toFixed(1)}s`;
+            }, 100);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            timeTaken = secondsElapsed;
+        }
+
+        // Steer player movement
+        let playerVelocity = { x: 0, z: 0 };
+        const pathBoundary = 3.5; // Boundary limits
+
+        function steerPlayer(dx, dz) {
+            if (!gameActive || currentTask !== 1) return;
+            playerBall.position.x += dx * 0.25;
+            playerBall.position.z += dz * 0.25;
+            
+            // Boundary checks: penalize if steering outside road lines
+            if (Math.abs(playerBall.position.x) > pathBoundary) {
+                navigationErrors++;
+                score = Math.max(15, score - 2);
+                playerBall.position.x = Math.max(-pathBoundary, Math.min(pathBoundary, playerBall.position.x));
+            }
+            
+            // Check win distance (Target collision check)
+            const dist = playerBall.position.distanceTo(targetCube.position);
+            if (dist < 1.2) {
+                steerWin();
+            }
+        }
+
+        // Steer navigation win
+        function steerWin() {
+            stopTimer();
+            gameActive = false;
+            
+            overlayTitle.innerText = "Task 1 Cleared!";
+            overlayDesc.innerText = "Target reached. Preparing Task 2: Object Recall...";
+            overlay.classList.remove('d-none');
+            
+            setTimeout(() => {
+                startTask2();
+            }, 2000);
+        }
+
+        // Initialize Task 2
+        function startTask2() {
+            currentTask = 2;
+            taskTitle.innerText = "Task 2: Memorize Object Placements";
+            overlay.classList.add('d-none');
+            navControls.classList.add('d-none');
+            
+            // Clear task 1 meshes
+            scene.remove(playerBall);
+            scene.remove(targetCube);
+            scene.remove(pathwayLine);
+
+            // Add three floating shapes (procedural geometries, no copyright)
+            // Left shape: Pink Cone
+            shapeLeft = new THREE.Mesh(
+                new THREE.ConeGeometry(0.8, 1.6, 4),
+                new THREE.MeshLambertMaterial({ color: 0xf43f5e })
+            );
+            shapeLeft.position.set(-3, 0.5, 0);
+            scene.add(shapeLeft);
+
+            // Center shape: Yellow Cylinder
+            shapeCenter = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.6, 0.6, 1.4, 16),
+                new THREE.MeshLambertMaterial({ color: 0xeab308 })
+            );
+            shapeCenter.position.set(0, 0.5, 0);
+            scene.add(shapeCenter);
+
+            // Right shape: Turquoise Torus
+            shapeRight = new THREE.Mesh(
+                new THREE.TorusGeometry(0.5, 0.15, 8, 24),
+                new THREE.MeshLambertMaterial({ color: 0x06b6d4 })
+            );
+            shapeRight.position.set(3, 0.5, 0);
+            scene.add(shapeRight);
+
+            // Zoom camera close
+            camera.position.set(0, 2, 6);
+            camera.lookAt(0, 0.5, 0);
+
+            // Countdown banner
+            overlayTitle.innerText = "Look at the shapes carefully!";
+            overlayDesc.innerText = "They will disappear in 5 seconds.";
+            overlay.classList.remove('d-none');
+
+            let countdown = 5;
+            const timerLabel = setInterval(() => {
+                countdown--;
+                overlayDesc.innerText = `They will disappear in ${countdown} seconds.`;
+                if (countdown <= 0) {
+                    clearInterval(timerLabel);
+                    startRecallQuiz();
+                }
+            }, 1000);
+        }
+
+        // Start Quiz
+        function startRecallQuiz() {
+            currentTask = 3;
+            overlay.classList.add('d-none');
+            taskTitle.innerText = "Task 3: Memorization Quiz";
+
+            // Hide shapes
+            scene.remove(shapeLeft);
+            scene.remove(shapeCenter);
+            scene.remove(shapeRight);
+
+            // Display question block
+            recallBlock.classList.remove('d-none');
+            askQuestion1();
+        }
+
+        function askQuestion1() {
+            questionText.innerText = "Which shape was located on the LEFT side?";
+            optionsContainer.innerHTML = `
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(1, 'Cylinder')">Yellow Cylinder</button>
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(1, 'Cone')">Pink Cone</button>
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(1, 'Torus')">Turquoise Torus</button>
+            `;
+        }
+
+        function askQuestion2() {
+            questionText.innerText = "What color was the Torus on the RIGHT side?";
+            optionsContainer.innerHTML = `
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(2, 'Pink')">Pink</button>
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(2, 'Yellow')">Yellow</button>
+                <button class="btn btn-outline-info px-4 py-2 question-btn" onclick="answerQuestion(2, 'Turquoise')">Turquoise</button>
+            `;
+        }
+
+        // Handle answer clicking
+        window.answerQuestion = function(qid, answer) {
+            if (qid === 1) {
+                // Correct answer is 'Cone'
+                if (answer !== 'Cone') {
+                    quizErrors++;
+                    score = Math.max(10, score - 20);
+                }
+                askQuestion2();
+            } else if (qid === 2) {
+                // Correct answer is 'Turquoise'
+                if (answer !== 'Turquoise') {
+                    quizErrors++;
+                    score = Math.max(10, score - 20);
+                }
+                finishGame();
+            }
+        };
+
+        function finishGame() {
+            recallBlock.classList.add('d-none');
+            gameplayCard.classList.add('d-none');
+            submittingCard.classList.remove('d-none');
+
+            // Send performance metrics back to view POST
+            const totalErrors = navigationErrors + quizErrors;
+            
+            fetch(window.location.pathname, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                body: JSON.stringify({
+                    time_taken: timeTaken,
+                    errors: totalErrors,
+                    score: score
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'SUCCESS') {
+                    window.location.href = data.redirect_url;
+                }
+            })
+            .catch(err => {
+                alert("Failed to save evaluation score: " + err);
+            });
+        }
+
+        function getCookie(name) {
+            const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return v ? v.pop() : '';
+        }
+
+        // Init 3D spatial maze
+        function initVRMaze() {
+            onboardingCard.classList.add('d-none');
+            gameplayCard.classList.remove('d-none');
+            
+            const viewport = document.getElementById('vr-viewport');
+            
+            // Scene & Renderer
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0f172a);
+            
+            camera = new THREE.PerspectiveCamera(60, viewport.clientWidth / viewport.clientHeight, 0.1, 100);
+            camera.position.set(0, 6, 8);
+            camera.lookAt(0, 0, -2);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(viewport.clientWidth, viewport.clientHeight);
+            viewport.appendChild(renderer.domElement);
+            
+            // Light
+            const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambient);
+            
+            const light = new THREE.DirectionalLight(0xffffff, 0.8);
+            light.position.set(5, 10, 5);
+            scene.add(light);
+            
+            // Pathway (Road line - Box Geometry)
+            const pathGeom = new THREE.BoxGeometry(6, 0.1, 15);
+            const pathMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+            pathwayLine = new THREE.Mesh(pathGeom, pathMat);
+            pathwayLine.position.set(0, -0.1, -4);
+            scene.add(pathwayLine);
+
+            // Left boundary rail (Red)
+            const railL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 15), new THREE.MeshLambertMaterial({color: 0xef4444}));
+            railL.position.set(-3, 0.25, -4);
+            scene.add(railL);
+            
+            // Right boundary rail (Red)
+            const railR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 15), new THREE.MeshLambertMaterial({color: 0xef4444}));
+            railR.position.set(3, 0.25, -4);
+            scene.add(railR);
+
+            // Grid lines on road
+            const gridHelper = new THREE.GridHelper(15, 15, 0x334155, 0x1e293b);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+
+            // Player Ball (Sphere Geometry)
+            const playerGeom = new THREE.SphereGeometry(0.5, 32, 32);
+            const playerMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
+            playerBall = new THREE.Mesh(playerGeom, playerMat);
+            playerBall.position.set(0, 0.5, 2);
+            scene.add(playerBall);
+            
+            // Checkpoint Goal (Cube Geometry)
+            const goalGeom = new THREE.BoxGeometry(1.2, 1.2, 1.2);
+            const goalMat = new THREE.MeshLambertMaterial({ color: 0x06b6d4, emissive: 0x0891b2 });
+            targetCube = new THREE.Mesh(goalGeom, goalMat);
+            targetCube.position.set(0, 0.6, -9);
+            scene.add(targetCube);
+            
+            // Game loop
+            clock = new THREE.Clock();
+            gameActive = true;
+            startTimer();
+
+            function tick() {
+                requestAnimationFrame(tick);
+                const elapsed = clock.getElapsedTime();
+                
+                // Spin target box to look inviting
+                targetCube.rotation.y += 0.02;
+                targetCube.rotation.x += 0.015;
+                
+                // Float target box
+                targetCube.position.y = 0.6 + Math.sin(elapsed * 2.0) * 0.15;
+                
+                // Let camera follow player slightly
+                camera.position.x = playerBall.position.x * 0.5;
+                camera.lookAt(playerBall.position.x * 0.2, 0.5, playerBall.position.z - 2);
+
+                // Animate floating items if in Task 2
+                if (currentTask === 2) {
+                    if (shapeLeft) shapeLeft.rotation.y += 0.015;
+                    if (shapeCenter) shapeCenter.rotation.x += 0.015;
+                    if (shapeRight) {
+                        shapeRight.rotation.y += 0.01;
+                        shapeRight.rotation.z += 0.01;
+                    }
+                }
+
+                renderer.render(scene, camera);
+            }
+            
+            tick();
+        }
+
+        // On-screen Steering triggers
+        document.getElementById('ctrlLeft').addEventListener('click', () => steerPlayer(-1, 0));
+        document.getElementById('ctrlRight').addEventListener('click', () => steerPlayer(1, 0));
+        document.getElementById('ctrlUp').addEventListener('click', () => steerPlayer(0, -1));
+        document.getElementById('ctrlDown').addEventListener('click', () => steerPlayer(0, 1));
+
+        // Keyboard Steering triggers
+        window.addEventListener('keydown', function(e) {
+            if (!gameActive || currentTask !== 1) return;
+            switch(e.key) {
+                case 'ArrowLeft':
+                case 'a':
+                    steerPlayer(-1, 0);
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                    steerPlayer(1, 0);
+                    break;
+                case 'ArrowUp':
+                case 'w':
+                    steerPlayer(0, -1);
+                    break;
+                case 'ArrowDown':
+                case 's':
+                    steerPlayer(0, 1);
+                    break;
+            }
+        });
+
+        // Start trigger
+        startBtn.addEventListener('click', initVRMaze);
+    });
+</script>
+{% endblock %}

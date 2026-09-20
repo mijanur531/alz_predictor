@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Patient Portal & AI Health Assessment - AlzPredictor{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Header Banner -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <span class="text-primary fw-bold text-uppercase small">Personal Diagnostic Portal</span>
+            <h2 class="fw-bold text-dark mb-0">Neurological Health Assessment</h2>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'vr_test' %}" class="btn btn-pill btn-pill-secondary btn-pill-sm">
+                🎮 VR Cognitive Battery ↗
+            </a>
+            <a href="{% url 'prescriptions_scanner' %}" class="btn btn-pill btn-pill-light btn-pill-sm">
+                💊 Prescription Scanner ↗
+            </a>
+            <button type="button" class="btn btn-pill btn-pill-primary btn-pill-sm" data-action="book-doctor">
+                Book Consultation ↗
+            </button>
+        </div>
+    </div>
+
+    <!-- Auto MMSE Notice if redirected from VR Game -->
+    <div id="vrTransferAlert" class="alert alert-success d-none d-flex align-items-center justify-content-between rounded-4 shadow-sm border-0 mb-4" role="alert">
+        <div class="d-flex align-items-center gap-2">
+            <span class="fs-4">🎯</span>
+            <div>
+                <strong>VR Telemetry Transferred!</strong>
+                <span id="vrTransferMsg" class="text-dark small ms-1">Cognitive score calibrated from your recent spatial test.</span>
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+        <!-- Left Column: Baseline intake features -->
+        <div class="col-lg-5">
+            <div class="nuvica-card p-4 h-100 bg-white" id="predictionFormCard">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="h5 fw-bold text-dark mb-0">Clinical Baseline Metrics</h4>
+                    <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1">Diagnostic Intake</span>
+                </div>
+                <p class="text-muted small mb-4">These biometric and cognitive parameters are evaluated against the trained machine learning inference pipeline.</p>
+                
+                <form method="post" action="{% url 'patient_dashboard' %}">
+                    {% csrf_token %}
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small text-dark">Age (years)</label>
+                            {{ intake_form.age }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small text-dark">Gender</label>
+                            {{ intake_form.gender }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-dark">Education Level</label>
+                            {{ intake_form.education_level }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small text-dark">BMI (kg/m²)</label>
+                            {{ intake_form.bmi }}
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold small text-dark">Cognitive MMSE (0-30)</label>
+                            {{ intake_form.cognitive_score }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold small text-dark">Physical Activity (hrs/wk)</label>
+                            {{ intake_form.physical_activity }}
+                        </div>
+                        <div class="col-12 form-check ms-3">
+                            {{ intake_form.smoking }}
+                            <label class="form-check-label text-dark small" for="{{ intake_form.smoking.id_for_label }}">
+                                Active Tobacco Smoker
+                            </label>
+                        </div>
+                        <div class="col-12 form-check ms-3">
+                            {{ intake_form.family_history }}
+                            <label class="form-check-label text-dark small" for="{{ intake_form.family_history.id_for_label }}">
+                                Family History of Alzheimer's Disease
+                            </label>
+                        </div>
+                    </div>
+                    <div class="d-grid mt-4">
+                        <button type="submit" class="btn btn-pill btn-pill-light">Save Baseline Profile</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Right Column: Trigger assessment, 3D Doctor, & history -->
+        <div class="col-lg-7">
+            <div class="nuvica-card p-4 mb-4 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h4 class="h5 fw-bold text-dark mb-1">Evaluate Risk Assessment</h4>
+                        <span class="text-muted small">Runs asynchronous machine learning risk inference</span>
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-primary" id="triggerAssessmentBtn">
+                        Run Risk Assessment ↗
+                    </button>
+                </div>
+
+                <!-- Loader / Processing View -->
+                <div id="evaluationLoader" class="d-none text-center py-5">
+                    <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+                    <h5 class="fw-bold text-dark">Running Machine Learning Diagnostic Pipeline...</h5>
+                    <p class="text-muted small">Inference enqueued in background Celery worker. Awaiting real-time WebSocket response...</p>
+                </div>
+
+                <!-- Result Card (Populated Dynamically) -->
+                <div id="evaluationResult" class="d-none p-4 rounded-4 border mb-4 bg-light">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="fw-bold text-dark mb-0">Diagnostic Assessment Summary</h5>
+                        <span class="badge text-uppercase px-3 py-2 fs-6 rounded-pill" id="resultClassBadge">Normal</span>
+                    </div>
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted fw-semibold">Confidence Probability</span>
+                            <strong id="resultProbabilityVal" class="text-dark">12.5%</strong>
+                        </div>
+                        <div class="progress" style="height: 10px; border-radius: 999px;">
+                            <div class="progress-bar bg-primary" id="resultProbabilityBar" role="progressbar" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between text-muted small mb-4">
+                        <span>Model Pipeline: <strong id="resultModelVersion" class="text-dark">v1.2.0</strong></span>
+                        <span>Completed: <strong id="resultTimestamp" class="text-dark">Just now</strong></span>
+                    </div>
+
+                    <!-- 3D Doctor Avatar & Speech Card -->
+                    <div class="p-3 bg-white rounded-3 border mb-3 shadow-sm">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center fs-2" style="width: 60px; height: 60px; flex-shrink: 0;">
+                                👩‍⚕️
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <strong class="text-primary small">Dr. Evelyn (AI Neurological Advisor)</strong>
+                                    <button id="btnVoiceReadout" class="btn btn-pill btn-pill-secondary btn-pill-sm py-1 px-3">
+                                        🔊 Listen
+                                    </button>
+                                </div>
+                                <p class="mb-0 small text-dark" id="doctor-speech-text" style="line-height: 1.5;">
+                                    Assessment received. Initial diagnostic features analyzed.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Next Step Action Buttons -->
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" class="btn btn-pill btn-pill-primary flex-grow-1" data-action="book-doctor" data-department="Neurology">
+                            Schedule Neurologist Consultation ↗
+                        </button>
+                        <a href="{% url 'prescriptions_scanner' %}" class="btn btn-pill btn-pill-light">
+                            Scan Existing Rx 💊
+                        </a>
+                    </div>
+                </div>
+                
+                <div id="evaluationError" class="d-none alert alert-danger rounded-3 mb-4" role="alert">
+                    An error occurred during evaluation. Please verify your clinical metrics parameters.
+                </div>
+            </div>
+
+            <!-- Historical Predictions List with Full CRUD -->
+            <div class="nuvica-card p-4 bg-white">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h4 class="h5 fw-bold text-dark mb-0">Diagnostic History</h4>
+                    <span class="badge bg-light text-muted border">{{ predictions|length }} Assessments</span>
+                </div>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover align-middle m-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Assessed Class</th>
+                                <th>Probability</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            {% for record in predictions %}
+                                <tr id="pred-row-{{ record.id }}">
+                                    <td class="small">{{ record.created_at|date:"M d, Y H:i" }}</td>
+                                    <td>
+                                        <span class="badge rounded-pill 
+                                            {% if record.prediction_class == 'Dementia' %}bg-danger-subtle text-danger
+                                            {% elif record.prediction_class == 'MCI' %}bg-warning-subtle text-warning
+                                            {% else %}bg-success-subtle text-success{% endif %}">
+                                            {{ record.prediction_class }}
+                                        </span>
+                                    </td>
+                                    <td class="small fw-semibold">{{ record.probability|floatformat:3 }}</td>
+                                    <td>
+                                        {% if record.is_reviewed %}
+                                            <span class="badge bg-secondary-subtle text-secondary" title="{{ record.review_comments }}">Reviewed by {{ record.reviewed_by.username }}</span>
+                                        {% else %}
+                                            <span class="badge bg-light text-muted border">Pending Review</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="deletePredictionRecord({{ record.id }})" title="Delete Record">
+                                            🗑️
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr id="emptyHistoryRow">
+                                    <td colspan="5" class="text-center text-muted py-4">No evaluations recorded yet. Run your first assessment above.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Check if redirected with auto_mmse query param from VR Test
+        const urlParams = new URLSearchParams(window.location.search);
+        const autoMmse = urlParams.get('auto_mmse');
+        if (autoMmse) {
+            const mmseInput = document.getElementById('id_cognitive_score');
+            if (mmseInput) {
+                mmseInput.value = autoMmse;
+            }
+            const alertEl = document.getElementById('vrTransferAlert');
+            const msgEl = document.getElementById('vrTransferMsg');
+            if (alertEl && msgEl) {
+                msgEl.innerText = `MMSE Score calibrated to ${autoMmse}/30 based on your spatial test performance. Ready for AI risk assessment!`;
+                alertEl.classList.remove('d-none');
+            }
+        }
+
+        const triggerBtn = document.getElementById('triggerAssessmentBtn');
+        const loader = document.getElementById('evaluationLoader');
+        const resultCard = document.getElementById('evaluationResult');
+        const errorCard = document.getElementById('evaluationError');
+        
+        // WebSocket setup for Patient
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const patientSocketUrl = wsProtocol + window.location.host + '/ws/patient/';
+        let patientSocket = null;
+
+        function connectPatientSocket() {
+            patientSocket = new WebSocket(patientSocketUrl);
+
+            patientSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.status === 'SUCCESS') {
+                    loader.classList.add('d-none');
+                    triggerBtn.removeAttribute('disabled');
+                    renderPredictionResult(data);
+                    addNewHistoryRow(data);
+                } else if (data.status === 'ERROR') {
+                    loader.classList.add('d-none');
+                    triggerBtn.removeAttribute('disabled');
+                    errorCard.classList.remove('d-none');
+                    errorCard.innerText = `Error: ${data.message}`;
+                }
+            };
+
+            patientSocket.onclose = function() {
+                setTimeout(connectPatientSocket, 3000);
+            };
+        }
+
+        async function triggerAssessment() {
+            resultCard.classList.add('d-none');
+            errorCard.classList.add('d-none');
+            
+            loader.classList.remove('d-none');
+            triggerBtn.setAttribute('disabled', 'true');
+
+            const ageInput = document.getElementById('id_age');
+            const genderInput = document.getElementById('id_gender');
+            const educationInput = document.getElementById('id_education_level');
+            const bmiInput = document.getElementById('id_bmi');
+            const cogInput = document.getElementById('id_cognitive_score');
+            const physInput = document.getElementById('id_physical_activity');
+            const smokeInput = document.getElementById('id_smoking');
+            const famInput = document.getElementById('id_family_history');
+
+            if (!ageInput?.value || !genderInput?.value || !educationInput?.value || !bmiInput?.value || !cogInput?.value) {
+                loader.classList.add('d-none');
+                triggerBtn.removeAttribute('disabled');
+                errorCard.classList.remove('d-none');
+                errorCard.innerText = "Please complete all baseline clinical metrics fields on the left before running evaluation.";
+                return;
+            }
+
+            const features = {
+                age: parseInt(ageInput.value),
+                gender: genderInput.value,
+                education_level: educationInput.value,
+                bmi: parseFloat(bmiInput.value),
+                cognitive_score: parseFloat(cogInput.value),
+                physical_activity: parseFloat(physInput?.value || 0),
+                smoking: smokeInput?.checked || false,
+                family_history: famInput?.checked || false
+            };
+
+            try {
+                const data = await ApiClient.submitPrediction(features);
+                console.log("Prediction enqueued, Task ID:", data.task_id);
+            } catch (err) {
+                loader.classList.add('d-none');
+                triggerBtn.removeAttribute('disabled');
+                errorCard.classList.remove('d-none');
+                errorCard.innerText = err.message || "Failed to enqueue prediction task.";
+            }
+        }
+
+        function renderPredictionResult(data) {
+            const percentage = (data.probability * 100).toFixed(1);
+            const badge = document.getElementById('resultClassBadge');
+            const probabilityBar = document.getElementById('resultProbabilityBar');
+            
+            if (data.class === 'Dementia') {
+                badge.className = "badge bg-danger text-uppercase px-3 py-2 fs-6 rounded-pill";
+                probabilityBar.className = "progress-bar bg-danger";
+            } else if (data.class === 'MCI') {
+                badge.className = "badge bg-warning text-dark text-uppercase px-3 py-2 fs-6 rounded-pill";
+                probabilityBar.className = "progress-bar bg-warning";
+            } else {
+                badge.className = "badge bg-success text-uppercase px-3 py-2 fs-6 rounded-pill";
+                probabilityBar.className = "progress-bar bg-success";
+            }
+
+            badge.innerText = data.class;
+            document.getElementById('resultProbabilityVal').innerText = `${percentage}%`;
+            probabilityBar.style.width = `${percentage}%`;
+            document.getElementById('resultModelVersion').innerText = data.model_version;
+            document.getElementById('resultTimestamp').innerText = data.created_at;
+            
+            resultCard.classList.remove('d-none');
+
+            // Set speech text
+            const doctorText = `Assessment calculated risk class as ${data.class} with ${percentage}% confidence probability. Recommendation: ${data.class === 'Normal' ? 'Maintain cognitive lifestyle checkups.' : 'Consult neurology department specialist.'}`;
+            document.getElementById('doctor-speech-text').innerText = doctorText;
+
+            // Dispatch global event for doctor speech synthesizer
+            window.dispatchEvent(new CustomEvent('prediction:received', { detail: data }));
+        }
+
+        function addNewHistoryRow(data) {
+            const tbody = document.getElementById('historyTableBody');
+            const emptyRow = document.getElementById('emptyHistoryRow');
+            if (emptyRow) emptyRow.remove();
+
+            const row = document.createElement('tr');
+            row.id = `pred-row-${data.id}`;
+            
+            let classBadgeClass = "bg-success-subtle text-success";
+            if (data.class === 'Dementia') classBadgeClass = "bg-danger-subtle text-danger";
+            else if (data.class === 'MCI') classBadgeClass = "bg-warning-subtle text-warning";
+
+            row.innerHTML = `
+                <td class="small">${data.created_at ? data.created_at.substring(0, 16) : 'Just now'}</td>
+                <td><span class="badge rounded-pill ${classBadgeClass}">${data.class}</span></td>
+                <td class="small fw-semibold">${Number(data.probability).toFixed(3)}</td>
+                <td><span class="badge bg-light text-muted border">Pending Review</span></td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0" onclick="deletePredictionRecord(${data.id})">🗑️</button>
+                </td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        // Voice button click
+        const voiceBtn = document.getElementById('btnVoiceReadout');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+                const text = document.getElementById('doctor-speech-text')?.innerText || '';
+                if (window.speechSynthesis) {
+                    const u = new SpeechSynthesisUtterance(text);
+                    window.speechSynthesis.speak(u);
+                }
+            });
+        }
+
+        if (triggerBtn) {
+            triggerBtn.addEventListener('click', triggerAssessment);
+        }
+        connectPatientSocket();
+    });
+
+    // Delete prediction record async via API
+    async function deletePredictionRecord(id) {
+        if (!confirm('Are you sure you want to delete this prediction record?')) return;
+        try {
+            await ApiClient.deletePrediction(id);
+            const row = document.getElementById(`pred-row-${id}`);
+            if (row) row.remove();
+        } catch (err) {
+            alert(`Failed to delete record: ${err.message}`);
+        }
+    }
+</script>
+{% endblock %}
+

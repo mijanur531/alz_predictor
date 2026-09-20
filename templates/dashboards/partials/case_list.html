@@ -1,0 +1,49 @@
+{% for case in cases %}
+<tr id="case-row-{{ case.id }}">
+    <td>
+        <strong>{{ case.patient.user.get_full_name|default:case.patient.user.username }}</strong>
+        <div class="small text-muted">Age: {{ case.patient.age }} | BMI: {{ case.patient.bmi }}</div>
+    </td>
+    <td>
+        <span class="badge 
+            {% if case.prediction_class == 'Dementia' %}bg-danger
+            {% elif case.prediction_class == 'MCI' %}bg-warning text-dark
+            {% else %}bg-success{% endif %}">
+            {{ case.prediction_class }}
+        </span>
+    </td>
+    <td>{{ case.probability|floatformat:3 }}</td>
+    <td>{{ case.created_at|date:"Y-m-d H:i" }}</td>
+    <td id="status-cell-{{ case.id }}">
+        {% if case.is_reviewed %}
+            <span class="badge bg-secondary" data-bs-toggle="tooltip" title="{{ case.review_comments }}">Reviewed</span>
+            <div class="small text-muted mt-1">By: {{ case.reviewed_by.username }}</div>
+        {% else %}
+            <span class="badge bg-outline-warning text-warning border-warning">Pending Review</span>
+        {% endif %}
+    </td>
+    <td>
+        <button class="btn btn-sm btn-outline-custom text-light review-btn" 
+                data-id="{{ case.id }}"
+                data-patient="{{ case.patient.user.get_full_name|default:case.patient.user.username }}"
+                data-class="{{ case.prediction_class }}"
+                data-prob="{{ case.probability }}"
+                data-age="{{ case.patient.age }}"
+                data-gender="{{ case.patient.gender }}"
+                data-edu="{{ case.patient.education_level }}"
+                data-bmi="{{ case.patient.bmi }}"
+                data-cog="{{ case.patient.cognitive_score }}"
+                data-smoke="{{ case.patient.smoking }}"
+                data-fam="{{ case.patient.family_history }}"
+                data-phys="{{ case.patient.physical_activity }}"
+                data-comments="{{ case.review_comments|default_if_none:'' }}"
+                data-reviewed="{{ case.is_reviewed }}">
+            {% if case.is_reviewed %}View / Edit{% else %}Annotate Case{% endif %}
+        </button>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="6" class="text-center text-muted py-4">No matching patient intake cases found.</td>
+</tr>
+{% endfor %}

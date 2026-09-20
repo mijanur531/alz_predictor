@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Contact Us - AlzPredictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <div class="glass-card p-5">
+            <h1 class="h2 fw-bold text-center mb-4 text-gradient">Contact Support / Clinic</h1>
+            
+            <form method="post" id="contactForm">
+                {% csrf_token %}
+                
+                <div class="mb-3">
+                    <label for="{{ form.name.id_for_label }}" class="form-label">Full Name</label>
+                    {{ form.name }}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.email.id_for_label }}" class="form-label">Email Address</label>
+                    {{ form.email }}
+                </div>
+                
+                <div class="mb-3">
+                    <label for="{{ form.message.id_for_label }}" class="form-label">Message Details</label>
+                    {{ form.message }}
+                </div>
+
+                <div class="form-check mb-4">
+                    {{ form.is_critical }}
+                    <label class="form-check-label text-warning fw-semibold" for="is_critical_checkbox">
+                        {{ form.is_critical.label }}
+                    </label>
+                </div>
+
+                <!-- Inline Warning Box for Critical flag -->
+                <div class="alert alert-warning d-none mb-4" id="critical_warning_box" role="alert">
+                    <strong>⚠️ High-Priority Queue:</strong> This will enqueue a priority task and broadcast live WebSocket notifications directly to on-duty staff. Please only use this for urgent operational or case alerts.
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-gradient btn-lg">Submit Message</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkbox = document.getElementById('is_critical_checkbox');
+        const warningBox = document.getElementById('critical_warning_box');
+        
+        if (checkbox && warningBox) {
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    warningBox.classList.remove('d-none');
+                } else {
+                    warningBox.classList.add('d-none');
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}
