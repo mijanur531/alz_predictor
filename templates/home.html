@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}AlzPredictor - Intelligent Neurological Health & Doctor Portal{% endblock %}
+
+{% block content %}
+<!-- Nuvica Hero Section -->
+<div class="nuvica-hero py-5 px-4 mb-5 shadow-sm">
+    <div class="container py-4">
+        <div class="row align-items-center g-5">
+            <div class="col-lg-7">
+                <div class="d-inline-flex align-items-center gap-2 px-3 py-1 bg-white rounded-pill shadow-sm mb-3 border">
+                    <span class="badge bg-primary-subtle text-primary rounded-pill">New</span>
+                    <span class="small fw-semibold text-dark">3D Hologram Consult & VR Cognitive Battery Active</span>
+                </div>
+                <h1 class="display-4 fw-bolder text-dark mb-3 tracking-tight">
+                    Smart Neurological Assessment & <span class="text-primary">Specialist Care</span>
+                </h1>
+                <p class="lead text-muted mb-4" style="font-size: 1.15rem; line-height: 1.6;">
+                    AI-powered Alzheimer's risk assessment, interactive 3D clinical holographic consultation, and verified neurological specialist appointment booking.
+                </p>
+                <div class="d-flex flex-wrap gap-3 align-items-center">
+                    {% if user.is_authenticated %}
+                        {% if user.role == 'patient' %}
+                            <a href="{% url 'patient_dashboard' %}" class="btn btn-pill btn-pill-primary">
+                                Launch Diagnostic Portal ↗
+                            </a>
+                            <a href="{% url 'vr_test' %}" class="btn btn-pill btn-pill-secondary">
+                                Take VR Memory Test 🎮
+                            </a>
+                            <a href="{% url 'appointment_booking' %}" class="btn btn-pill btn-pill-light">
+                                Book Doctor ↗
+                            </a>
+                        {% elif user.role in 'doctor,nurse' %}
+                            <a href="{% url 'service_dashboard' %}" class="btn btn-pill btn-pill-primary">
+                                Open Clinical Intake Board ↗
+                            </a>
+                        {% else %}
+                            <a href="{% url 'management_dashboard' %}" class="btn btn-pill btn-pill-primary">
+                                Management Operations ↗
+                            </a>
+                        {% endif %}
+                    {% else %}
+                        <a href="{% url 'register' %}" class="btn btn-pill btn-pill-primary">
+                            Get Started Free ↗
+                        </a>
+                        <a href="{% url 'appointment_booking' %}" class="btn btn-pill btn-pill-light">
+                            Explore Specialist Doctors ↗
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="d-flex align-items-center gap-4 mt-4 pt-2 text-muted small">
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-success fw-bold">✓</span> 98.4% Diagnostic Accuracy
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-success fw-bold">✓</span> Instant Email Delivery
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <span class="text-success fw-bold">✓</span> HIPAA/GDPR Aligned
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-5">
+                <!-- 3D Doctor Hologram Card Widget -->
+                <div class="nuvica-card p-4 bg-white shadow-lg">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-bold">AI Clinical Assistant</span>
+                        </div>
+                        <span id="doctorSpeakingBadge" class="badge bg-danger-subtle text-danger rounded-pill d-none">Speaking...</span>
+                    </div>
+                    
+                    <div class="doctor-avatar-3d-container mb-3 position-relative">
+                        <canvas id="doctorAvatarCanvas" class="w-100 h-100"></canvas>
+                    </div>
+
+                    <div id="doctorSpeechBubble" class="speech-bubble mb-3">
+                        <strong>Dr. Evelyn:</strong> "Hello! I am your AI Clinical Specialist. Complete the spatial VR memory task to calibrate your MMSE score, or book a consultation with our verified doctors."
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button id="btnSpeakDoctorAdvice" class="btn btn-pill btn-pill-primary btn-pill-sm flex-grow-1">
+                            🔊 Listen to Doctor Voice
+                        </button>
+                        <button id="btnStopDoctorSpeech" class="btn btn-pill btn-pill-light btn-pill-sm">
+                            ⏹️ Mute
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Organ Health Scan Cards Section -->
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <span class="text-primary fw-bold text-uppercase small tracking-wide">Comprehensive Diagnostics</span>
+            <h2 class="fw-bold text-dark mb-0">Organ Health Diagnostics & Screening</h2>
+        </div>
+        <a href="{% url 'appointment_booking' %}" class="btn btn-pill btn-pill-light btn-pill-sm d-none d-md-inline-flex">
+            View All Clinical Scans ↗
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Brain Health Check -->
+        <div class="col-md-6 col-lg-3">
+            <div class="organ-card organ-card-brain h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="organ-icon-wrapper bg-purple-subtle text-purple" style="background: #f3e8ff; color: #7c3aed;">
+                        🧠
+                    </div>
+                    <span class="badge bg-purple-subtle text-purple mb-2" style="background: #f3e8ff; color: #7c3aed;">Neurology</span>
+                    <h5 class="fw-bold text-dark mb-2">Brain Health Check</h5>
+                    <p class="text-muted small mb-3">Early detection for cognitive impairment, MCI, and Alzheimer's staging using ML feature inference.</p>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-3 text-muted small">
+                        <span>Reliability: 98.4%</span>
+                        <span class="text-success fw-bold">Live AI Active</span>
+                    </div>
+                    <a href="{% if user.is_authenticated %}{% url 'patient_dashboard' %}{% else %}{% url 'login' %}{% endif %}" class="btn btn-pill btn-pill-primary w-100 btn-pill-sm">
+                        Run Brain Assessment ↗
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Liver Function -->
+        <div class="col-md-6 col-lg-3">
+            <div class="organ-card organ-card-liver h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="organ-icon-wrapper" style="background: #ecfdf5; color: #0d9488;">
+                        🧪
+                    </div>
+                    <span class="badge mb-2" style="background: #ecfdf5; color: #0d9488;">Metabolic</span>
+                    <h5 class="fw-bold text-dark mb-2">Liver Function</h5>
+                    <p class="text-muted small mb-3">Enzyme profiling, hepatic clearance markers, and drug interaction safety scanning.</p>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-3 text-muted small">
+                        <span>Biomarkers: 12</span>
+                        <span class="text-muted">Clinical Lab</span>
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-secondary w-100 btn-pill-sm" data-action="book-doctor" data-department="Gastroenterology">
+                        Consult Hepatologist ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Kidney Health -->
+        <div class="col-md-6 col-lg-3">
+            <div class="organ-card organ-card-kidney h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="organ-icon-wrapper" style="background: #eff6ff; color: #0284c7;">
+                        🧬
+                    </div>
+                    <span class="badge mb-2" style="background: #eff6ff; color: #0284c7;">Renal Panel</span>
+                    <h5 class="fw-bold text-dark mb-2">Kidney Health</h5>
+                    <p class="text-muted small mb-3">Glomerular filtration rate, creatinine monitoring, and blood pressure vascular correlation.</p>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-3 text-muted small">
+                        <span>GFR Accuracy: 99%</span>
+                        <span class="text-muted">Specialist Panel</span>
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-light w-100 btn-pill-sm" data-action="book-doctor" data-department="Geriatrics">
+                        Book Renal Review ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lungs & Respiration -->
+        <div class="col-md-6 col-lg-3">
+            <div class="organ-card organ-card-lungs h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="organ-icon-wrapper" style="background: #fff1f2; color: #e11d48;">
+                        🫁
+                    </div>
+                    <span class="badge mb-2" style="background: #fff1f2; color: #e11d48;">Pulmonology</span>
+                    <h5 class="fw-bold text-dark mb-2">Lungs & Oxygenation</h5>
+                    <p class="text-muted small mb-3">Spirometry integration, cerebral oxygenation metrics, and nocturnal apnea analysis.</p>
+                </div>
+                <div>
+                    <div class="d-flex align-items-center justify-content-between mb-3 text-muted small">
+                        <span>Oxygen Index: 98%</span>
+                        <span class="text-muted">Telemetry</span>
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-light w-100 btn-pill-sm" data-action="book-doctor" data-department="Cardiology">
+                        Schedule Exam ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Verified Specialist Doctors Showcase -->
+<div class="container py-5">
+    <div class="d-flex justify-content-between align-items-end mb-4">
+        <div>
+            <span class="text-primary fw-bold text-uppercase small tracking-wide">Clinical Network</span>
+            <h2 class="fw-bold text-dark mb-0">Verified Medical Specialists</h2>
+        </div>
+        <a href="{% url 'appointment_booking' %}" class="btn btn-pill btn-pill-primary btn-pill-sm">
+            Full Doctor Directory ↗
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- Doctor 1: Dr. Marcus Vance -->
+        <div class="col-md-6 col-lg-4">
+            <div class="doctor-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="doctor-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=300&h=300&fit=crop&crop=face" alt="Dr. Marcus Vance" class="doctor-avatar-img">
+                            <span class="doctor-verified-badge" title="Verified Specialist">✓</span>
+                        </div>
+                        <div>
+                            <span class="specialty-tag mb-1">Neurology</span>
+                            <h5 class="fw-bold text-dark mb-1">Dr. Marcus Vance</h5>
+                            <div class="small text-muted mb-2">MD, Ph.D. Harvard Medical</div>
+                            <div class="doctor-rating-pill">⭐ 4.95 (140+ reviews)</div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">Specializing in early-stage cognitive decline, neurodegenerative biomarkers, and amyloid therapy management.</p>
+                </div>
+                <div class="border-top pt-3 d-flex align-items-center justify-content-between">
+                    <div class="text-muted small">
+                        <span class="fw-semibold text-dark">Mon - Fri</span> • 9AM-5PM
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-primary btn-pill-sm" data-action="book-doctor" data-doctor-id="1" data-doctor-name="Dr. Marcus Vance" data-department="Neurology">
+                        Book Consult ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor 2: Dr. Helena Romero -->
+        <div class="col-md-6 col-lg-4">
+            <div class="doctor-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="doctor-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1594824813581-2292f7e02517?w=300&h=300&fit=crop&crop=face" alt="Dr. Helena Romero" class="doctor-avatar-img">
+                            <span class="doctor-verified-badge" title="Verified Specialist">✓</span>
+                        </div>
+                        <div>
+                            <span class="specialty-tag mb-1" style="background: #fef3c7; color: #b45309;">Geriatrics</span>
+                            <h5 class="fw-bold text-dark mb-1">Dr. Helena Romero</h5>
+                            <div class="small text-muted mb-2">MD, Johns Hopkins Hospital</div>
+                            <div class="doctor-rating-pill">⭐ 4.98 (210+ reviews)</div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">Dedicated to comprehensive elder care, MMSE cognitive evaluation, and holistic physical-mental wellness plans.</p>
+                </div>
+                <div class="border-top pt-3 d-flex align-items-center justify-content-between">
+                    <div class="text-muted small">
+                        <span class="fw-semibold text-dark">Tue - Sat</span> • 10AM-6PM
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-primary btn-pill-sm" data-action="book-doctor" data-doctor-id="2" data-doctor-name="Dr. Helena Romero" data-department="Geriatrics">
+                        Book Consult ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Doctor 3: Dr. Arthur Sterling -->
+        <div class="col-md-6 col-lg-4">
+            <div class="doctor-card h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="doctor-avatar-wrapper">
+                            <img src="https://images.unsplash.com/photo-1537368910025-700350fe46c7?w=300&h=300&fit=crop&crop=face" alt="Dr. Arthur Sterling" class="doctor-avatar-img">
+                            <span class="doctor-verified-badge" title="Verified Specialist">✓</span>
+                        </div>
+                        <div>
+                            <span class="specialty-tag mb-1" style="background: #ffe4e6; color: #e11d48;">Cardiology</span>
+                            <h5 class="fw-bold text-dark mb-1">Dr. Arthur Sterling</h5>
+                            <div class="small text-muted mb-2">MD, Stanford Cardiovascular</div>
+                            <div class="doctor-rating-pill">⭐ 4.92 (95+ reviews)</div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-3">Expert in cardiovascular and cerebrovascular health, microvascular perfusion, and hypertension-related cognitive risks.</p>
+                </div>
+                <div class="border-top pt-3 d-flex align-items-center justify-content-between">
+                    <div class="text-muted small">
+                        <span class="fw-semibold text-dark">Mon - Thu</span> • 8AM-4PM
+                    </div>
+                    <button type="button" class="btn btn-pill btn-pill-primary btn-pill-sm" data-action="book-doctor" data-doctor-id="3" data-doctor-name="Dr. Arthur Sterling" data-department="Cardiology">
+                        Book Consult ↗
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="{% static 'js/hospital3D.js' %}"></script>
+{% endblock %}
+

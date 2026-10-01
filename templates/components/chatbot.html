@@ -1,0 +1,74 @@
+<!-- Clinical AI Chatbot Floating Widget (RAG + NLP + LLM) -->
+<div id="clinical-chatbot-root">
+    <!-- Floating Trigger Button -->
+    <button id="chatbot-fab-btn" class="btn btn-primary-gradient rounded-circle shadow-lg d-flex align-items-center justify-content-center"
+            style="position: fixed; bottom: 25px; right: 25px; width: 62px; height: 62px; z-index: 1060; border: 2px solid rgba(255,255,255,0.3); transition: transform 0.3s ease;"
+            aria-label="Open AI Medical Assistant">
+        <span class="fs-4">🤖</span>
+        <span class="position-absolute top-0 start-100 translate-middle p-2 bg-success border border-light rounded-circle">
+            <span class="visually-hidden">Online</span>
+        </span>
+    </button>
+
+    <!-- Chatbot Window Panel -->
+    <div id="chatbot-window" class="glass-card shadow-2xl d-none flex-column"
+         style="position: fixed; bottom: 100px; right: 25px; width: 380px; max-width: calc(100vw - 40px); height: 550px; max-height: calc(100vh - 130px); z-index: 1060; border-radius: 20px; overflow: hidden; border: 1px solid rgba(2,132,199,0.3); background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(16px);">
+        
+        <!-- Chatbot Header -->
+        <div class="p-3 bg-dark bg-opacity-75 border-bottom border-secondary d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+                <div class="rounded-circle bg-info bg-opacity-25 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                    <span class="fs-5">🩺</span>
+                </div>
+                <div>
+                    <h6 class="mb-0 fw-bold text-gradient-cyan">Dr. Nuvica AI</h6>
+                    <small class="text-muted d-block" style="font-size: 0.75rem;">Clinical RAG & Diagnostic Assistant</small>
+                </div>
+            </div>
+            <button id="chatbot-close-btn" class="btn btn-sm btn-link text-muted p-0 text-decoration-none fs-5">&times;</button>
+        </div>
+
+        <!-- Chat Messages Container -->
+        <div id="chatbot-messages" class="p-3 flex-grow-1 overflow-auto d-flex flex-column gap-3" style="font-size: 0.88rem;">
+            
+            <!-- Welcome Assistant Message -->
+            <div class="d-flex gap-2 align-items-start">
+                <div class="rounded-circle bg-info bg-opacity-25 p-1 flex-shrink-0" style="width: 28px; height: 28px; text-align: center; font-size: 0.8rem;">🤖</div>
+                <div class="p-3 rounded-4 bg-secondary bg-opacity-25 border border-secondary text-light">
+                    <p class="mb-2">Hello! I am <strong>Dr. Nuvica</strong>, your AI Clinical Health Assistant. Powered by RAG medical retrieval and clinical NLP.</p>
+                    <p class="mb-0 text-muted small">Ask me anything about Alzheimer's indicators, MMSE scoring, medication interactions, or booking doctor consultations.</p>
+                </div>
+            </div>
+
+            <!-- Quick Starter Chips -->
+            <div id="chatbot-quick-chips" class="d-flex flex-wrap gap-1 my-1">
+                <button class="btn btn-xs btn-outline-info rounded-pill quick-prompt-btn" data-query="What is an MMSE score?">What is MMSE?</button>
+                <button class="btn btn-xs btn-outline-info rounded-pill quick-prompt-btn" data-query="Tell me about Donepezil and Memantine">Donepezil & Memantine</button>
+                <button class="btn btn-xs btn-outline-info rounded-pill quick-prompt-btn" data-query="How does the 3D VR test work?">3D VR Memory Test</button>
+                <button class="btn btn-xs btn-outline-info rounded-pill quick-prompt-btn" data-query="How do I book an appointment with a neurologist?">Book Neurologist</button>
+            </div>
+
+        </div>
+
+        <!-- Typing Indicator (Hidden by default) -->
+        <div id="chatbot-typing-indicator" class="px-3 py-2 text-muted small d-none align-items-center gap-2">
+            <div class="spinner-grow spinner-grow-sm text-info" role="status"></div>
+            <span>Dr. Nuvica is searching clinical knowledge base...</span>
+        </div>
+
+        <!-- Chat Input Form -->
+        <div class="p-3 bg-dark bg-opacity-50 border-top border-secondary">
+            <form id="chatbot-form" class="d-flex gap-2">
+                <input type="text" id="chatbot-input" class="form-control form-control-sm bg-secondary bg-opacity-25 text-light border-secondary rounded-pill px-3"
+                       placeholder="Ask about Alzheimer's, drugs, symptoms..." autocomplete="off">
+                <button type="submit" class="btn btn-sm btn-primary-gradient rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                    <span>➔</span>
+                </button>
+            </form>
+            <div class="text-center mt-2">
+                <span class="text-muted" style="font-size: 0.7rem;">⚠️ AI Assistant for screening/triage guidance only.</span>
+            </div>
+        </div>
+
+    </div>
+</div>

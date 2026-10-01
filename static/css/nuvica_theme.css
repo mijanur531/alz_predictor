@@ -1,0 +1,380 @@
+/* Nuvica & Doctify Modern Medical Theme */
+:root {
+    --nuv-primary: #4f46e5;
+    --nuv-primary-hover: #4338ca;
+    --nuv-primary-soft: #eef2ff;
+    --nuv-secondary: #0d9488;
+    --nuv-secondary-soft: #f0fdf4;
+    --nuv-accent-blue: #0284c7;
+    --nuv-accent-purple: #7c3aed;
+    --nuv-accent-rose: #e11d48;
+    --nuv-accent-amber: #d97706;
+    
+    --nuv-bg-main: #f8fafc;
+    --nuv-bg-card: rgba(255, 255, 255, 0.92);
+    --nuv-bg-hero: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 40%, #f3e8ff 70%, #ecfeff 100%);
+    --nuv-border: #e2e8f0;
+    --nuv-border-focus: #818cf8;
+    
+    --nuv-text-dark: #0f172a;
+    --nuv-text-muted: #64748b;
+    --nuv-text-light: #94a3b8;
+    
+    --nuv-shadow-sm: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
+    --nuv-shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
+    --nuv-shadow-lg: 0 20px 35px -10px rgba(15, 23, 42, 0.12), 0 10px 15px -5px rgba(15, 23, 42, 0.04);
+    --nuv-shadow-glow: 0 12px 30px -5px rgba(79, 70, 229, 0.25);
+    
+    --nuv-radius-sm: 10px;
+    --nuv-radius-md: 16px;
+    --nuv-radius-lg: 24px;
+    --nuv-radius-full: 9999px;
+}
+
+/* Base resets & typography */
+body {
+    background-color: var(--nuv-bg-main);
+    color: var(--nuv-text-dark);
+    font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow-x: hidden;
+    letter-spacing: -0.01em;
+}
+
+/* Nuvica Hero Gradient Section */
+.nuvica-hero {
+    background: var(--nuv-bg-hero);
+    position: relative;
+    border-radius: 0 0 var(--nuv-radius-lg) var(--nuv-radius-lg);
+    overflow: hidden;
+}
+
+.nuvica-hero::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    pointer-events: none;
+}
+
+/* Navigation */
+.nuvica-nav {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--nuv-border);
+    transition: all 0.3s ease;
+}
+
+.nuvica-brand-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--nuv-primary), var(--nuv-accent-purple));
+    color: white;
+    font-weight: 700;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+}
+
+/* Pill Action Buttons */
+.btn-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 22px;
+    border-radius: var(--nuv-radius-full);
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid transparent;
+}
+
+.btn-pill-primary {
+    background: linear-gradient(135deg, var(--nuv-primary), #6366f1);
+    color: #ffffff !important;
+    box-shadow: var(--nuv-shadow-glow);
+}
+
+.btn-pill-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 32px -6px rgba(79, 70, 229, 0.35);
+    color: #ffffff !important;
+}
+
+.btn-pill-primary .arrow-icon,
+.btn-pill .arrow-icon {
+    display: inline-flex;
+    transition: transform 0.2s ease;
+}
+
+.btn-pill:hover .arrow-icon {
+    transform: translate(2px, -2px);
+}
+
+.btn-pill-secondary {
+    background: var(--nuv-secondary-soft);
+    color: var(--nuv-secondary) !important;
+    border-color: rgba(13, 148, 136, 0.2);
+}
+
+.btn-pill-secondary:hover {
+    background: var(--nuv-secondary);
+    color: white !important;
+    transform: translateY(-2px);
+}
+
+.btn-pill-light {
+    background: #ffffff;
+    color: var(--nuv-text-dark) !important;
+    border-color: var(--nuv-border);
+    box-shadow: var(--nuv-shadow-sm);
+}
+
+.btn-pill-light:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    transform: translateY(-2px);
+    box-shadow: var(--nuv-shadow-md);
+}
+
+.btn-pill-sm {
+    padding: 6px 14px;
+    font-size: 0.85rem;
+}
+
+/* Glass & Elevated Cards */
+.nuvica-card {
+    background: var(--nuv-bg-card);
+    border: 1px solid var(--nuv-border);
+    border-radius: var(--nuv-radius-lg);
+    box-shadow: var(--nuv-shadow-md);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.nuvica-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--nuv-shadow-lg);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Organ Health Scan Cards */
+.organ-card {
+    border-radius: var(--nuv-radius-lg);
+    padding: 24px;
+    background: #ffffff;
+    border: 1px solid var(--nuv-border);
+    box-shadow: var(--nuv-shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.organ-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--nuv-shadow-md);
+}
+
+.organ-card-brain {
+    background: linear-gradient(145deg, #ffffff 0%, #f5f3ff 100%);
+    border-top: 4px solid var(--nuv-accent-purple);
+}
+
+.organ-card-liver {
+    background: linear-gradient(145deg, #ffffff 0%, #ecfdf5 100%);
+    border-top: 4px solid var(--nuv-secondary);
+}
+
+.organ-card-kidney {
+    background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);
+    border-top: 4px solid var(--nuv-accent-blue);
+}
+
+.organ-card-lungs {
+    background: linear-gradient(145deg, #ffffff 0%, #fff1f2 100%);
+    border-top: 4px solid var(--nuv-accent-rose);
+}
+
+.organ-icon-wrapper {
+    width: 52px;
+    height: 52px;
+    border-radius: var(--nuv-radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 16px;
+    box-shadow: var(--nuv-shadow-sm);
+}
+
+/* Doctor Verified Cards */
+.doctor-card {
+    background: #ffffff;
+    border-radius: var(--nuv-radius-lg);
+    border: 1px solid var(--nuv-border);
+    padding: 24px;
+    box-shadow: var(--nuv-shadow-sm);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.doctor-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--nuv-shadow-md);
+    border-color: rgba(79, 70, 229, 0.3);
+}
+
+.doctor-avatar-wrapper {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    margin-right: 18px;
+    flex-shrink: 0;
+}
+
+.doctor-avatar-img {
+    width: 100%;
+    height: 100%;
+    border-radius: 20px;
+    object-fit: cover;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.doctor-verified-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: #10b981;
+    color: white;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    border: 2px solid white;
+}
+
+.doctor-rating-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: #fef3c7;
+    color: #92400e;
+    padding: 3px 10px;
+    border-radius: var(--nuv-radius-full);
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.specialty-tag {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: var(--nuv-radius-full);
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: var(--nuv-primary-soft);
+    color: var(--nuv-primary);
+}
+
+/* Badge System */
+.badge-nuvica-success {
+    background: #dcfce7;
+    color: #15803d;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--nuv-radius-full);
+}
+
+.badge-nuvica-warning {
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--nuv-radius-full);
+}
+
+.badge-nuvica-danger {
+    background: #ffe4e6;
+    color: #be123c;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--nuv-radius-full);
+}
+
+/* Form inputs */
+.nuvica-input, .form-control.nuvica-input, .form-select.nuvica-input {
+    background: #ffffff;
+    border: 1px solid var(--nuv-border);
+    border-radius: var(--nuv-radius-md);
+    padding: 12px 16px;
+    color: var(--nuv-text-dark);
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+}
+
+.nuvica-input:focus, .form-control.nuvica-input:focus, .form-select.nuvica-input:focus {
+    border-color: var(--nuv-primary);
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+    outline: none;
+}
+
+/* 3D Doctor Avatar Canvas Container */
+.doctor-avatar-3d-container {
+    width: 100%;
+    height: 320px;
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+    border-radius: var(--nuv-radius-lg);
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--nuv-shadow-lg);
+}
+
+.speech-bubble {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    border-radius: var(--nuv-radius-md);
+    padding: 14px 18px;
+    color: var(--nuv-text-dark);
+    font-size: 0.9rem;
+    box-shadow: var(--nuv-shadow-md);
+    border: 1px solid var(--nuv-border);
+}
+
+/* VR Task Canvas */
+.vr-canvas-container {
+    width: 100%;
+    height: 480px;
+    background: #090d16;
+    border-radius: var(--nuv-radius-lg);
+    position: relative;
+    overflow: hidden;
+    border: 2px solid #334155;
+}
+
+/* Modal styling */
+.modal-content.nuvica-modal {
+    border-radius: var(--nuv-radius-lg);
+    border: 1px solid var(--nuv-border);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    background: #ffffff;
+}
+
+.modal-header.nuvica-modal-header {
+    border-bottom: 1px solid var(--nuv-border);
+    padding: 20px 24px;
+    background: #f8fafc;
+    border-radius: var(--nuv-radius-lg) var(--nuv-radius-lg) 0 0;
+}

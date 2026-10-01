@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+
+{% block title %}Prescription Scanner - AlzPredictor{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Left Column: Scan new prescription -->
+    <div class="col-md-5">
+        <div class="glass-card p-4">
+            <h3 class="h4 fw-bold text-gradient-cyan mb-4">Scan New Prescription</h3>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label" for="prescription_image">Upload Prescription Image</label>
+                    <input type="file" name="prescription_image" id="prescription_image" class="form-control" accept="image/*">
+                    <small class="text-muted d-block mt-1">Accepts PNG, JPG, or JPEG. Verify names are readable.</small>
+                </div>
+                
+                <div class="mb-3 text-center text-muted fw-bold">
+                    <span>— OR —</span>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label" for="raw_text">Paste Prescription Text Manually</label>
+                    <textarea name="raw_text" id="raw_text" class="form-control" rows="4" placeholder="e.g. Rx: Donepezil 10mg daily at bedtime..."></textarea>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-gradient">Extract & Suggest Medicines</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Scan History & LLM Analysis -->
+    <div class="col-md-7">
+        <div class="glass-card p-4 mb-4">
+            <h3 class="h4 fw-bold text-gradient mb-3">Analysis Findings</h3>
+            
+            <div id="noSelectionMsg" class="py-5 text-center text-muted">
+                Select a scan from the history table below to load the parsed text and LLM therapeutics recommendations.
+            </div>
+
+            <!-- Analysis details container (Hidden until selection) -->
+            <div id="analysisDetails" class="d-none">
+                <div class="p-3 bg-secondary bg-opacity-25 rounded border border-secondary mb-3">
+                    <h6 class="fw-semibold text-muted text-uppercase small mb-2">Parsed Text Output</h6>
+                    <pre class="m-0 text-light font-monospace" style="white-space: pre-wrap;" id="analysisRawText"></pre>
+                </div>
+
+                <div class="p-3 bg-dark rounded border border-secondary" id="analysisLLMContent">
+                    <!-- LLM Output goes here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card p-4">
+            <h3 class="h4 fw-bold text-gradient-cyan mb-3">Prescription History</h3>
+            <div class="table-responsive" style="max-height: 250px;">
+                <table class="table table-dark table-hover border-secondary align-middle m-0">
+                    <thead>
+                        <tr>
+                            <th>Date Scanned</th>
+                            <th>Detected Medicines</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for scan in scans %}
+                            <tr>
+                                <td>{{ scan.created_at|date:"Y-m-d H:i" }}</td>
+                                <td>
+                                    {% if scan.detected_medicines %}
+                                        {% for med in scan.detected_medicines %}
+                                            <span class="badge bg-info text-dark">{{ med }}</span>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span class="badge bg-secondary">None</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-custom text-light view-scan-btn"
+                                            data-raw="{{ scan.raw_text }}"
+                                            data-analysis="{{ scan.llm_analysis }}">
+                                        View Analysis
+                                    </button>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted py-4">No prescriptions scanned yet. Upload one on the left.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const viewBtns = document.querySelectorAll('.view-scan-btn');
+        const noSelectionMsg = document.getElementById('noSelectionMsg');
+        const detailsContainer = document.getElementById('analysisDetails');
+        const rawTextContainer = document.getElementById('analysisRawText');
+        const llmContentContainer = document.getElementById('analysisLLMContent');
+
+        viewBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const raw = this.getAttribute('data-raw');
+                const analysis = this.getAttribute('data-analysis');
+
+                rawTextContainer.innerText = raw;
+                
+                // Convert simple Markdown text to HTML for presentation
+                llmContentContainer.innerHTML = parseMarkdown(analysis);
+
+                noSelectionMsg.classList.add('d-none');
+                detailsContainer.classList.remove('d-none');
+            });
+        });
+
+        // Basic parser for LLM markdown response
+        function parseMarkdown(md) {
+            let html = md;
+            // Headers
+            html = html.replace(/^### (.*$)/gim, '<h5 class="fw-bold text-gradient-cyan mt-3">$1</h5>');
+            html = html.replace(/^#### (.*$)/gim, '<h6 class="fw-bold text-warning mt-3">$1</h6>');
+            // Lists
+            html = html.replace(/^\- (.*$)/gim, '<ul><li>$1</li></ul>');
+            // Cleanup double list tagging
+            html = html.replace(/<\/ul>\s*<ul>/gim, '');
+            // Bold
+            html = html.replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>');
+            // Paragraph breaks
+            html = html.replace(/\n\n/gim, '<br>');
+            return html;
+        }
+    });
+</script>
+{% endblock %}
