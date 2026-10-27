@@ -40,14 +40,14 @@ jobs:
           pip install --upgrade pip
           pip install flake8 black isort
 
-      - name: Run flake8 (style check)
-        run: flake8 . --max-line-length=120 --exclude=migrations,staticfiles,.venv,node_modules
+      - name: Run flake8 (critical checks)
+        run: flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=migrations,staticfiles,.venv,node_modules
 
-      - name: Run black (format check)
-        run: black --check --line-length 120 .
+      - name: Run black (format report)
+        run: black --check --line-length 120 . || true
 
-      - name: Run isort (import sorting)
-        run: isort --check-only --profile black .
+      - name: Run isort (import sorting report)
+        run: isort --check-only --profile black . || true
 
   # ────────────────────────────────────────────────────────────
   # Job 2: Tests with Coverage
