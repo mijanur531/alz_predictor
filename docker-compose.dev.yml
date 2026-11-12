@@ -1,0 +1,36 @@
+version: '3.9'
+# docker-compose.dev.yml — local development override
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  web:
+    build:
+      context: .
+      target: builder       # use builder stage (includes dev tools)
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app              # hot-reload: mount source code
+    environment:
+      DJANGO_SETTINGS_MODULE: alz_predictor.settings.dev
+      DEBUG: "True"
+      SECRET_KEY: django-insecure-dev-key-not-for-prod
+      DATABASE_URL: postgres://postgres:postgres@db:5432/alz_db
+      REDIS_URL: redis://redis:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
+      ALLOWED_HOSTS: "*"
+      CORS_ALLOW_ALL_ORIGINS: "True"
+    ports:
+      - "8000:8000"
+
+  worker:
+    command: celery -A alz_predictor worker -l debug
+    volumes:
+      - .:/app
+    environment:
+      DJANGO_SETTINGS_MODULE: alz_predictor.settings.dev
+      DEBUG: "True"
+      SECRET_KEY: django-insecure-dev-key-not-for-prod
+      DATABASE_URL: postgres://postgres:postgres@db:5432/alz_db
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0

@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}Ops Dashboard - AlzPredictor{% endblock %}
+
+{% block extra_head %}
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4 mb-4">
+    <!-- Stat card 1: Total Predictions -->
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center">
+            <h6 class="text-muted text-uppercase small">Total Predictions</h6>
+            <h2 class="display-5 fw-bold text-gradient-cyan" id="statTotalPredictions">0</h2>
+        </div>
+    </div>
+    <!-- Stat card 2: Total Users -->
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center">
+            <h6 class="text-muted text-uppercase small">Registered Accounts</h6>
+            <h2 class="display-5 fw-bold text-gradient" id="statTotalUsers">0</h2>
+        </div>
+    </div>
+    <!-- Stat card 3: Critical alerts -->
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center border-danger bg-danger bg-opacity-10">
+            <h6 class="text-danger-emphasis text-uppercase small">Critical Staff Alerts</h6>
+            <h2 class="display-5 fw-bold text-danger" id="statCriticalAlerts">0</h2>
+        </div>
+    </div>
+    <!-- Stat card 4: Pending reviews -->
+    <div class="col-md-3">
+        <div class="glass-card p-4 text-center">
+            <h6 class="text-muted text-uppercase small">System Telemetry</h6>
+            <h2 class="display-5 fw-bold text-success" id="statSystemHealth">Online</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <!-- Chart: Diagnosis Distribution -->
+    <div class="col-lg-6">
+        <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-3 text-gradient-cyan">Risk Categorization Distribution</h5>
+            <div style="position: relative; height:300px; width:100%">
+                <canvas id="distributionChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Chart: Submissions Timeline placeholder -->
+    <div class="col-lg-6">
+        <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-3 text-gradient">System Intake Load Activity</h5>
+            <div style="position: relative; height:300px; width:100%">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left column: Recent predictions -->
+    <div class="col-lg-6">
+        <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-3 text-gradient-cyan">Live Intake Feed</h5>
+            <div class="table-responsive" style="max-height: 400px;">
+                <table class="table table-dark table-hover border-secondary align-middle m-0">
+                    <thead>
+                        <tr>
+                            <th>Patient</th>
+                            <th>Class</th>
+                            <th>Prob</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="managementPredTableBody">
+                        {% for record in predictions %}
+                            <tr>
+                                <td>{{ record.patient.user.get_full_name|default:record.patient.user.username }}</td>
+                                <td>
+                                    <span class="badge 
+                                        {% if record.prediction_class == 'Dementia' %}bg-danger
+                                        {% elif record.prediction_class == 'MCI' %}bg-warning text-dark
+                                        {% else %}bg-success{% endif %}">
+                                        {{ record.prediction_class }}
+                                    </span>
+                                </td>
+                                <td>{{ record.probability|floatformat:3 }}</td>
+                                <td>{{ record.created_at|date:"H:i:s" }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr id="emptyPredRow">
+                                <td colspan="4" class="text-center text-muted py-4">No evaluations logged yet.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right column: System audit logs -->
+    <div class="col-lg-6">
+        <div class="glass-card p-4 h-100">
+            <h5 class="fw-bold mb-3 text-gradient">Platform Operations Audit Trail</h5>
+            <div id="managementAuditLogs" class="list-group border-0" style="max-height: 400px; overflow-y: auto;">
+                {% for log in logs %}
+                    <div class="list-group-item bg-transparent text-light border-secondary px-0 py-2 d-flex justify-content-between align-items-center">
+                        <div>
+                            <span class="text-info fw-semibold">{{ log.user.username|default:"System" }}</span>
+                            <span class="text-muted small">performed</span>
+                            <span class="badge bg-secondary font-monospace">{{ log.action }}</span>
+                        </div>
+                        <small class="text-muted">{{ log.timestamp|date:"H:i:s" }}</small>
+                    </div>
+                {% empty %}
+                    <div class="text-center text-muted py-4" id="emptyAuditRow">No operational audits logged yet.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        let distributionChartInstance = null;
+        let timelineChartInstance = null;
+
+        // Keep running totals for timeline
+        let normalTimeline = [2, 4, 3, 5, 2, 6, 8];
+        let mciTimeline = [1, 2, 2, 4, 3, 2, 5];
+        let dementiaTimeline = [0, 1, 3, 2, 1, 4, 3];
+
+        // Init Chart instances
+        function setupCharts(stats) {
+            const ctx1 = document.getElementById('distributionChart').getContext('2d');
+            distributionChartInstance = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Normal', 'MCI', 'Dementia'],
+                    datasets: [{
+                        data: [
+                            stats.class_distribution.Normal,
+                            stats.class_distribution.MCI,
+                            stats.class_distribution.Dementia
+                        ],
+                        backgroundColor: ['#06b6d4', '#8b5cf6', '#f43f5e'],
+                        borderColor: '#131c2f',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: { color: '#f8fafc' }
+                        }
+                    }
+                }
+            });
+
+            const ctx2 = document.getElementById('timelineChart').getContext('2d');
+            timelineChartInstance = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                    datasets: [
+                        {
+                            label: 'Normal',
+                            data: normalTimeline,
+                            borderColor: '#06b6d4',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'MCI',
+                            data: mciTimeline,
+                            borderColor: '#8b5cf6',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Dementia',
+                            data: dementiaTimeline,
+                            borderColor: '#f43f5e',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        // Fetch initial stats
+        fetch('/api/v1/management/stats/')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('statTotalPredictions').innerText = data.total_predictions;
+                document.getElementById('statTotalUsers').innerText = data.total_users;
+                document.getElementById('statCriticalAlerts').innerText = data.critical_messages;
+                setupCharts(data);
+            });
+
+        // WebSocket setup for Live Dashboard telemetry
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const dashboardSocketUrl = wsProtocol + window.location.host + '/ws/dashboard/';
+        let dashboardSocket = null;
+
+        function connectDashboardSocket() {
+            dashboardSocket = new WebSocket(dashboardSocketUrl);
+
+            dashboardSocket.onmessage = function(e) {
+                const data = JSON.parse(e.data);
+                
+                if (data.event === 'new_prediction') {
+                    // Update stats
+                    const totalPredsEl = document.getElementById('statTotalPredictions');
+                    let currentPreds = parseInt(totalPredsEl.innerText);
+                    totalPredsEl.innerText = currentPreds + 1;
+                    
+                    const prediction = data.data;
+
+                    // Append Row to Predictions Feed
+                    const tbody = document.getElementById('managementPredTableBody');
+                    const emptyPred = document.getElementById('emptyPredRow');
+                    if (emptyPred) emptyPred.remove();
+
+                    const row = document.createElement('tr');
+                    let badgeClass = "bg-success";
+                    if (prediction.class === 'Dementia') badgeClass = "bg-danger";
+                    else if (prediction.class === 'MCI') badgeClass = "bg-warning text-dark";
+
+                    row.innerHTML = `
+                        <td>${prediction.patient_name}</td>
+                        <td><span class="badge ${badgeClass}">${prediction.class}</span></td>
+                        <td>${prediction.probability.toFixed(3)}</td>
+                        <td>${prediction.timestamp}</td>
+                    `;
+                    tbody.insertBefore(row, tbody.firstChild);
+
+                    // Update Chart in real-time
+                    if (distributionChartInstance) {
+                        let classIndex = 0;
+                        if (prediction.class === 'MCI') classIndex = 1;
+                        if (prediction.class === 'Dementia') classIndex = 2;
+                        
+                        distributionChartInstance.data.datasets[0].data[classIndex]++;
+                        distributionChartInstance.update();
+                    }
+
+                    // Increment Timeline line chart for the last day (Sunday / current index)
+                    if (timelineChartInstance) {
+                        let classIndex = 0; // Normal
+                        if (prediction.class === 'MCI') {
+                            mciTimeline[mciTimeline.length - 1]++;
+                        } else if (prediction.class === 'Dementia') {
+                            dementiaTimeline[dementiaTimeline.length - 1]++;
+                        } else {
+                            normalTimeline[normalTimeline.length - 1]++;
+                        }
+                        timelineChartInstance.update();
+                    }
+
+                    // Insert Log
+                    addAuditLogMarkup("System", `prediction_completed`, prediction.timestamp);
+
+                } else if (data.event === 'critical_contact') {
+                    const criticalEl = document.getElementById('statCriticalAlerts');
+                    let currentAlerts = parseInt(criticalEl.innerText);
+                    criticalEl.innerText = currentAlerts + 1;
+
+                    const contact = data.data;
+                    addAuditLogMarkup(contact.name, "critical_contact_submitted", contact.timestamp);
+                }
+            };
+
+            dashboardSocket.onclose = function(e) {
+                console.log('Dashboard telemetry socket closed. Reconnecting...');
+                setTimeout(connectDashboardSocket, 3000);
+            };
+
+            dashboardSocket.onerror = function(err) {
+                console.error('Dashboard WS error:', err);
+                dashboardSocket.close();
+            };
+        }
+
+        function addAuditLogMarkup(actor, action, timestamp) {
+            const container = document.getElementById('managementAuditLogs');
+            const emptyLog = document.getElementById('emptyAuditRow');
+            if (emptyLog) emptyLog.remove();
+
+            const item = document.createElement('div');
+            item.className = "list-group-item bg-transparent text-light border-secondary px-0 py-2 d-flex justify-content-between align-items-center";
+            item.innerHTML = `
+                <div>
+                    <span class="text-info fw-semibold">${actor}</span>
+                    <span class="text-muted small">performed</span>
+                    <span class="badge bg-secondary font-monospace">${action}</span>
+                </div>
+                <small class="text-muted">${timestamp}</small>
+            `;
+            container.insertBefore(item, container.firstChild);
+        }
+
+        connectDashboardSocket();
+    });
+</script>
+{% endblock %}

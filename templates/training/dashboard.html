@@ -1,0 +1,373 @@
+{% extends 'base.html' %}
+
+{% block title %}Model Training Board - AlzPredictor{% endblock %}
+
+{% block extra_head %}
+<!-- Include Chart.js for real-time telemetry rendering -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="row g-4">
+    <!-- Left Column: Hyperparameters form -->
+    <div class="col-md-5">
+        <div class="glass-card p-4">
+            <h3 class="h4 fw-bold text-gradient-cyan mb-4">Train ML/DL Model</h3>
+            
+            <form id="trainingConfigForm">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label" for="modelTypeSelect">Model Architecture</label>
+                    <select class="form-select border-info" id="modelTypeSelect">
+                        <option value="Random Forest" selected>Random Forest Heuristic Classifier (scikit-learn)</option>
+                        <option value="Deep Learning MLP">Deep Learning Multi-Layer Perceptron (PyTorch/Keras)</option>
+                    </select>
+                </div>
+
+                <!-- Parameters: Random Forest -->
+                <div id="rfParamsSection" class="p-3 mb-4 rounded border border-secondary bg-opacity-25 bg-secondary">
+                    <h5 class="h6 fw-bold text-info mb-3">Random Forest Configurations</h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label" for="paramEstimators">n_estimators</label>
+                            <input type="number" id="paramEstimators" class="form-control" value="100" min="10" max="500">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="paramMaxDepth">max_depth</label>
+                            <input type="number" id="paramMaxDepth" class="form-control" value="10" min="1" max="50">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="paramRfEpochs">Training Epochs (Simulated)</label>
+                            <input type="number" id="paramRfEpochs" class="form-control" value="6" min="3" max="15">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Parameters: MLP Deep Learning -->
+                <div id="mlpParamsSection" class="p-3 mb-4 rounded border border-secondary bg-opacity-25 bg-secondary d-none">
+                    <h5 class="h6 fw-bold text-warning mb-3">Deep Learning Hyperparameters</h5>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label" for="paramMlpEpochs">Epochs</label>
+                            <input type="number" id="paramMlpEpochs" class="form-control" value="10" min="5" max="15">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="paramLR">Learning Rate</label>
+                            <input type="number" step="0.001" id="paramLR" class="form-control" value="0.01" min="0.0001" max="0.5">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="paramHiddenUnits">Hidden Layers Neurons</label>
+                            <input type="number" id="paramHiddenUnits" class="form-control" value="64" min="16" max="256">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary-gradient btn-lg" id="runTrainingBtn">Start Training Run</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Right Column: Live Training telemetry -->
+    <div class="col-md-7">
+        <!-- Telemetry View (Hidden until training starts) -->
+        <div class="glass-card p-4 mb-4 d-none" id="telemetrySection">
+            <h3 class="h4 fw-bold text-gradient mb-3">Live Telemetry Analysis</h3>
+            
+            <div class="progress mb-4" style="height: 10px; background-color: rgba(255,255,255,0.05);">
+                <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" 
+                     id="trainingProgressBar" style="width: 0%;"></div>
+            </div>
+
+            <div class="row text-center mb-4">
+                <div class="col-6">
+                    <span class="text-muted d-block small">Epoch Progress</span>
+                    <strong class="fs-4 text-info" id="telemetryEpochVal">0 / 0</strong>
+                </div>
+                <div class="col-3">
+                    <span class="text-muted d-block small">Accuracy</span>
+                    <strong class="fs-4 text-success" id="telemetryAccuracyVal">0.0%</strong>
+                </div>
+                <div class="col-3">
+                    <span class="text-muted d-block small">Loss</span>
+                    <strong class="fs-4 text-danger" id="telemetryLossVal">0.000</strong>
+                </div>
+            </div>
+
+            <!-- Canvas for Chart.js -->
+            <div style="position: relative; height:250px; width:100%">
+                <canvas id="trainingCurveCanvas"></canvas>
+            </div>
+            
+            <!-- Success Notification -->
+            <div class="alert alert-success d-none mt-3 mb-0" id="trainingSuccessAlert" role="alert">
+                🎉 <strong>Training Complete!</strong> Active prediction model updated to: <strong id="successModelName">-</strong>
+            </div>
+        </div>
+
+        <div class="glass-card p-4" id="telemetryPlaceholder">
+            <div class="py-5 text-center text-muted">
+                <h3>Telemetry Pending</h3>
+                <p class="mb-0">Configure your parameters and trigger a training session on the left to activate WebGL dashboard charts.</p>
+            </div>
+        </div>
+
+        <!-- Trained models history -->
+        <div class="glass-card p-4">
+            <h3 class="h4 fw-bold text-gradient-cyan mb-3">Trained Model Artifacts</h3>
+            <div class="table-responsive" style="max-height: 250px;">
+                <table class="table table-dark table-hover border-secondary align-middle m-0">
+                    <thead>
+                        <tr>
+                            <th>Model Identifier</th>
+                            <th>Architecture</th>
+                            <th>Accuracy</th>
+                            <th>Loss</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modelArtifactsTableBody">
+                        {% for artifact in models %}
+                            <tr>
+                                <td class="font-monospace">{{ artifact.name }}</td>
+                                <td>{{ artifact.model_type }}</td>
+                                <td>{{ artifact.metrics.final_accuracy|floatformat:4 }}</td>
+                                <td>{{ artifact.metrics.final_loss|floatformat:4 }}</td>
+                                <td>
+                                    {% if artifact.is_active %}
+                                        <span class="badge bg-success">Active Classifier</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Archived</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">No model training records found. Start a training session.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const modelSelect = document.getElementById('modelTypeSelect');
+        const rfParams = document.getElementById('rfParamsSection');
+        const mlpParams = document.getElementById('mlpParamsSection');
+        const form = document.getElementById('trainingConfigForm');
+        
+        const placeholder = document.getElementById('telemetryPlaceholder');
+        const telemetry = document.getElementById('telemetrySection');
+        const runBtn = document.getElementById('runTrainingBtn');
+        const progressBar = document.getElementById('trainingProgressBar');
+        
+        let chartInstance = null;
+        let epochLabels = [];
+        let lossData = [];
+        let accuracyData = [];
+
+        // Toggle configuration sections based on dropdown selections
+        modelSelect.addEventListener('change', function() {
+            if (this.value === 'Random Forest') {
+                rfParams.classList.remove('d-none');
+                mlpParams.classList.add('d-none');
+            } else {
+                rfParams.classList.add('d-none');
+                mlpParams.classList.remove('d-none');
+            }
+        });
+
+        function getCookie(name) {
+            const v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+            return v ? v.pop() : '';
+        }
+
+        // Initialize Chart.js
+        function initializeTelemetryChart() {
+            const ctx = document.getElementById('trainingCurveCanvas').getContext('2d');
+            
+            // Destroy older instance if exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            epochLabels = [];
+            lossData = [];
+            accuracyData = [];
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: epochLabels,
+                    datasets: [
+                        {
+                            label: 'Training Loss',
+                            data: lossData,
+                            borderColor: '#f43f5e',
+                            backgroundColor: 'rgba(244, 63, 94, 0.1)',
+                            yAxisID: 'y-loss',
+                            tension: 0.3
+                        },
+                        {
+                            label: 'Validation Accuracy',
+                            data: accuracyData,
+                            borderColor: '#10b981',
+                            backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                            yAxisID: 'y-acc',
+                            tension: 0.3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94a3b8' } },
+                        'y-loss': {
+                            position: 'left',
+                            grid: { color: 'rgba(255,255,255,0.05)' },
+                            ticks: { color: '#f43f5e' },
+                            title: { display: true, text: 'Loss', color: '#f43f5e' }
+                        },
+                        'y-acc': {
+                            position: 'right',
+                            grid: { drawOnChartArea: false },
+                            ticks: { color: '#10b981' },
+                            title: { display: true, text: 'Accuracy', color: '#10b981' }
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: '#f8fafc' } }
+                    }
+                }
+            });
+        }
+
+        // Connect to WebSocket channel
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+        const dashboardSocketUrl = wsProtocol + window.location.host + '/ws/dashboard/';
+        let socket = new WebSocket(dashboardSocketUrl);
+
+        socket.onmessage = function(e) {
+            const payload = JSON.parse(e.data);
+            
+            if (payload.event === 'training_progress') {
+                const telemetryData = payload.data;
+                
+                if (telemetryData.status === 'TRAINING') {
+                    // Update stats
+                    const percentage = (telemetryData.epoch / telemetryData.total_epochs * 100).toFixed(0);
+                    progressBar.style.width = `${percentage}%`;
+                    document.getElementById('telemetryEpochVal').innerText = `${telemetryData.epoch} / ${telemetryData.total_epochs}`;
+                    document.getElementById('telemetryAccuracyVal').innerText = `${(telemetryData.accuracy * 100).toFixed(1)}%`;
+                    document.getElementById('telemetryLossVal').innerText = telemetryData.loss.toFixed(4);
+
+                    // Push points to Chart.js
+                    if (chartInstance) {
+                        chartInstance.data.labels.push(`Ep ${telemetryData.epoch}`);
+                        chartInstance.data.datasets[0].data.push(telemetryData.loss);
+                        chartInstance.data.datasets[1].data.push(telemetryData.accuracy);
+                        chartInstance.update();
+                    }
+                } else if (telemetryData.status === 'COMPLETE') {
+                    progressBar.style.width = `100%`;
+                    progressBar.classList.remove('progress-bar-animated', 'progress-bar-striped');
+                    progressBar.className = "progress-bar bg-success";
+                    
+                    // Show success
+                    const successAlert = document.getElementById('trainingSuccessAlert');
+                    document.getElementById('successModelName').innerText = telemetryData.model_name;
+                    successAlert.classList.remove('d-none');
+                    runBtn.removeAttribute('disabled');
+
+                    // Add new row to trained models table
+                    addNewArtifactRow(telemetryData);
+                }
+            }
+        };
+
+        function addNewArtifactRow(data) {
+            const tbody = document.getElementById('modelArtifactsTableBody');
+            
+            // Set all active statuses to archived in DOM
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach(r => {
+                const badge = r.querySelector('.badge');
+                if (badge && badge.innerText === 'Active Classifier') {
+                    badge.className = 'badge bg-secondary';
+                    badge.innerText = 'Archived';
+                }
+            });
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="font-monospace">${data.model_name}</td>
+                <td>${modelSelect.value}</td>
+                <td>${data.accuracy.toFixed(4)}</td>
+                <td>${data.loss.toFixed(4)}</td>
+                <td><span class="badge bg-success">Active Classifier</span></td>
+            `;
+            tbody.insertBefore(row, tbody.firstChild);
+        }
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Disable button, show telemetry panel
+            runBtn.setAttribute('disabled', 'true');
+            placeholder.classList.add('d-none');
+            telemetry.classList.remove('d-none');
+            document.getElementById('trainingSuccessAlert').classList.add('d-none');
+            
+            progressBar.className = "progress-bar progress-bar-striped progress-bar-animated bg-info";
+            progressBar.style.width = `0%`;
+
+            // Reset labels and graphs
+            initializeTelemetryChart();
+
+            // Prepare POST params
+            const modelType = modelSelect.value;
+            let postBody = { model_type: modelType };
+            
+            if (modelType === 'Deep Learning MLP') {
+                postBody.epochs = document.getElementById('paramMlpEpochs').value;
+                postBody.learning_rate = document.getElementById('paramLR').value;
+                postBody.hidden_units = document.getElementById('paramHiddenUnits').value;
+            } else {
+                postBody.epochs = document.getElementById('paramRfEpochs').value;
+                postBody.n_estimators = document.getElementById('paramEstimators').value;
+                postBody.max_depth = document.getElementById('paramMaxDepth').value;
+            }
+
+            // POST to initiate training run
+            fetch('/management/training/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCookie('csrftoken')
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(postBody)
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ERROR') {
+                    alert("Failed to start training: " + data.message);
+                    runBtn.removeAttribute('disabled');
+                }
+            })
+            .catch(err => {
+                console.error(err);
+                runBtn.removeAttribute('disabled');
+            });
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}About AlzPredictor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <h1 class="display-5 fw-bold mb-4 text-gradient">About the Platform</h1>
+        
+        <div class="glass-card p-4 mb-4">
+            <h2 class="h4 fw-bold text-gradient-cyan mb-3">Model Architecture & Prediction Classes</h2>
+            <p>The AlzPredictor model processes patient clinical baselines and lifestyle scores to categorize records into three primary risk categories:</p>
+            <ul>
+                <li><strong>Normal</strong>: Cognitive performance and physical indicators are in normal ranges. No significant risk is identified.</li>
+                <li><strong>MCI (Mild Cognitive Impairment)</strong>: Early indicators of mild cognitive changes are present. Patient exhibits subtle deficits requiring monitoring.</li>
+                <li><strong>Dementia</strong>: Strong clinical features indicating significant cognitive decline (e.g. low MMSE scores, advanced age, high family predisposition).</li>
+            </ul>
+        </div>
+
+        <div class="glass-card p-4 mb-4">
+            <h2 class="h4 fw-bold text-gradient-cyan mb-3">Clinical Metrics Collected</h2>
+            <table class="table table-dark table-striped border-secondary align-middle">
+                <thead>
+                    <tr>
+                        <th>Metric</th>
+                        <th>Standard Value / Details</th>
+                        <th>Impact Weight</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Age</strong></td>
+                        <td>Years (typically 50-90)</td>
+                        <td>Moderate - increased risk in elder classes</td>
+                    </tr>
+                    <tr>
+                        <td><strong>BMI</strong></td>
+                        <td>Body Mass Index (kg/m²)</td>
+                        <td>Low - high obesity adds slight risk factor</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cognitive Score</strong></td>
+                        <td>Mini-Mental State Exam (MMSE: 0 - 30)</td>
+                        <td>Very High - core indicator of impairment</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Family History</strong></td>
+                        <td>Predisposition (Yes / No)</td>
+                        <td>High - genetic predisposition is critical</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Lifestyle Factors</strong></td>
+                        <td>Smoking status and Physical activity hours/week</td>
+                        <td>Low - modifies baseline vascular risk</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="glass-card p-4 text-center alert-disclaimer">
+            <h3 class="h5 fw-bold text-danger mb-2">Academic Prototype Notice</h3>
+            <p class="mb-0">This web application is built strictly as a portfolio, architectural demonstration, and academic project. It does not replace real clinical examinations. All database records and model outputs are mocks and should not be used as official medical suggestions.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

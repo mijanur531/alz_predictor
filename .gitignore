@@ -1,0 +1,71 @@
+# ─────────────────────────────────────────────────────────────
+# .gitignore — Alzheimer Predictor Django Project
+# ─────────────────────────────────────────────────────────────
+
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+
+# ── Virtual Environments ──────────────────────────────────────
+.venv/
+venv/
+env/
+ENV/
+
+# ── Django ────────────────────────────────────────────────────
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+staticfiles/
+mediafiles/
+
+# ── Environment / Secrets ────────────────────────────────────
+.env
+.env.local
+.env.production
+*.env
+
+# ── ML Models / Artifacts ────────────────────────────────────
+*.pkl
+*.joblib
+*.h5
+*.pt
+*.pth
+models/artifacts/
+
+# ── Testing / Coverage ────────────────────────────────────────
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ── IDEs ──────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Docker ────────────────────────────────────────────────────
+.docker/
+
+# ── Node (if frontend added later) ───────────────────────────
+node_modules/
+npm-debug.log*
+
+# ── OS ────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
