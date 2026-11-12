@@ -23,8 +23,8 @@ remote_url = f"https://mijanur531:{token}@github.com/mijanur531/alz_predictor.gi
 
 print("Connecting to https://github.com/mijanur531/alz_predictor.git...")
 try:
-    git.push(repo_path, remote_url, 'refs/heads/main')
-    print("SUCCESS: Successfully pushed all commits to https://github.com/mijanur531/alz_predictor.git!")
+    git.push(repo_path, remote_url, 'refs/heads/main', force=True)
+    print("SUCCESS: Successfully pushed all commits to https://github.com/mijanur531/alz_predictor.git on branch 'main'!")
 except Exception as e:
     print(f"Push failed: {e}")
     exit(1)
