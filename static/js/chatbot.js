@@ -111,15 +111,24 @@ document.addEventListener('DOMContentLoaded', function() {
         let sourcesHtml = '';
         if (data.retrieved_sources && data.retrieved_sources.length > 0) {
             sourcesHtml = '<div class="mt-2 pt-2 border-top border-secondary small text-muted"><strong>📚 Sources:</strong> ' +
-                data.retrieved_sources.map(s => `<span class="badge bg-secondary bg-opacity-50 text-info me-1">${s}</span>`).join('') +
+                data.retrieved_sources.map(s => `<span class="badge bg-secondary bg-opacity-50 text-info me-1">${escapeHtml(s)}</span>`).join('') +
                 '</div>';
+        }
+        if (data.retrieved_at) {
+            const retrievedAt = new Date(data.retrieved_at);
+            if (!Number.isNaN(retrievedAt.getTime())) {
+                sourcesHtml += `<div class="small text-muted mt-1">Directory checked ${escapeHtml(retrievedAt.toLocaleTimeString())}</div>`;
+            }
         }
 
         // Format Action Buttons
         let actionsHtml = '';
         if (data.actions && data.actions.length > 0) {
             actionsHtml = '<div class="d-flex flex-wrap gap-1 mt-2 pt-2 border-top border-secondary">' +
-                data.actions.map(a => `<a href="${a.url}" class="btn btn-xs btn-outline-info rounded-pill text-decoration-none">${a.label}</a>`).join('') +
+                data.actions.map(a => {
+                    const url = safeInternalUrl(a.url);
+                    return `<a href="${escapeHtml(url)}" class="btn btn-xs btn-outline-info rounded-pill text-decoration-none">${escapeHtml(a.label)}</a>`;
+                }).join('') +
                 '</div>';
         }
 
@@ -164,5 +173,16 @@ document.addEventListener('DOMContentLoaded', function() {
         const parts = value.split(`; ${name}=`);
         if (parts.length === 2) return parts.pop().split(';').shift();
         return '';
+    }
+
+    function safeInternalUrl(value) {
+        try {
+            const url = new URL(value, window.location.origin);
+            return url.origin === window.location.origin
+                ? `${url.pathname}${url.search}${url.hash}`
+                : '#';
+        } catch {
+            return '#';
+        }
     }
 });

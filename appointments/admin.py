@@ -1,3 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin # type: ignore
 
-# Register your models here.
+from .models import Appointment, Doctor
+
+
+@admin.register(Doctor, Appointment)
+class AppointmentAdmin(admin.ModelAdmin):
+    pass

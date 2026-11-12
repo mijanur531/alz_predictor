@@ -1,10 +1,7 @@
-"""
-Clinical RAG + NLP + LLM Chatbot Engine
-Provides intelligent conversational assistance for Alzheimer's diagnostics,
-pharmacological knowledge, department navigation, and appointment triage.
-"""
+"""Clinical RAG and NLP response engine for local knowledge and live specialists."""
 
 import re
+from urllib.parse import urlencode
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
@@ -89,18 +86,6 @@ CLINICAL_KNOWLEDGE_CHUNKS = [
         )
     },
     {
-        "id": "doctors_booking",
-        "topic": "Doctor Appointments & Hospital Specialists",
-        "keywords": "doctor appointment book specialist consultation neurology cardiology geriatrics clinic",
-        "content": (
-            "Our hospital team includes verified board-certified specialists: "
-            "- Dr. Aris Thorne & Dr. Haseeb Hossain (Neurology & Cognitive Disorders) "
-            "- Dr. Hamida Jannat (Cardiology & Vascular Health) "
-            "- Dr. Sarah Mitchell (Geriatrics & Memory Care). "
-            "You can book consultations online through our 1-Click Appointment Booking modal on the portal."
-        )
-    },
-    {
         "id": "lifestyle_prevention",
         "topic": "Supportive Lifestyle & Prevention",
         "keywords": "prevention diet lifestyle exercise mind sleep nutrition omega 3 risk reduction",
@@ -125,24 +110,62 @@ class RAGKnowledgeRetriever:
         self.vectorizer = TfidfVectorizer(stop_words='english')
         self.tfidf_matrix = self.vectorizer.fit_transform(self.corpus)
 
-    def retrieve(self, query, top_k=2):
+    def doctor_chunks(self, doctors):
+        chunks = []
+        for doctor in doctors:
+            booking_query = urlencode({
+                "doctor": doctor.pk,
+                "department": doctor.department,
+            })
+            chunks.append({
+                "id": f"doctor_{doctor.pk}",
+                "topic": f"{doctor.name} — {doctor.specialty}",
+                "keywords": (
+                    f"doctor specialist appointment book consultation "
+                    f"{doctor.name} {doctor.specialty} {doctor.department}"
+                ),
+                "content": (
+                    f"{doctor.name} is an active {doctor.specialty} specialist in "
+                    f"{doctor.department}. Available days: {doctor.available_days}. "
+                    f"Available hours: {doctor.available_hours}. "
+                    f"Qualification: {doctor.qualification}."
+                ),
+                "booking_url": f"/appointments/booking/?{booking_query}",
+                "doctor_name": doctor.name,
+            })
+        return chunks
+
+    def retrieve(self, query, top_k=2, additional_chunks=None):
         """
         Retrieves top_k relevant knowledge chunks using cosine similarity.
         """
-        query_vec = self.vectorizer.transform([query])
-        scores = cosine_similarity(query_vec, self.tfidf_matrix)[0]
+        chunks = self.chunks
+        vectorizer = self.vectorizer
+        matrix = self.tfidf_matrix
+        if additional_chunks:
+            chunks = [*self.chunks, *additional_chunks]
+            corpus = [f"{c['topic']}. {c['keywords']}. {c['content']}" for c in chunks]
+            vectorizer = TfidfVectorizer(stop_words='english')
+            matrix = vectorizer.fit_transform(corpus)
+
+        query_vec = vectorizer.transform([query])
+        scores = cosine_similarity(query_vec, matrix)[0]
         
         ranked_indices = scores.argsort()[::-1]
         results = []
         for idx in ranked_indices[:top_k]:
             if scores[idx] > 0.05:  # Relevance threshold
-                chunk = self.chunks[idx]
-                results.append({
+                chunk = chunks[idx]
+                result = {
                     "id": chunk["id"],
                     "topic": chunk["topic"],
                     "content": chunk["content"],
                     "similarity_score": round(float(scores[idx]), 3)
-                })
+                }
+                if "booking_url" in chunk:
+                    result["booking_url"] = chunk["booking_url"]
+                    result["doctor_name"] = chunk["doctor_name"]
+                results.append(result)
         return results
 
 
@@ -189,13 +212,18 @@ class ClinicalLLMChatbot:
         self.retriever = RAGKnowledgeRetriever()
         self.nlp = ClinicalNLPProcessor()
 
-    def process_query(self, user_message, patient_context=None):
+    def process_query(self, user_message, patient_context=None, doctors=None):
         """
-        Processes user query through NLP -> RAG -> LLM pipeline.
+        Retrieves relevant knowledge and composes a response for the user query.
         """
         intent = self.nlp.extract_intent(user_message)
         entities = self.nlp.extract_entities(user_message)
-        retrieved_chunks = self.retriever.retrieve(user_message, top_k=2)
+        doctor_chunks = self.retriever.doctor_chunks(doctors or [])
+        retrieved_chunks = self.retriever.retrieve(
+            user_message,
+            top_k=3,
+            additional_chunks=doctor_chunks,
+        )
 
         # Context assembly
         rag_context = "\n".join([f"[{c['topic']}]: {c['content']}" for c in retrieved_chunks])
@@ -205,15 +233,33 @@ class ClinicalLLMChatbot:
         action_buttons = []
 
         if intent == "book_appointment":
-            response_text = (
-                "I would be glad to help you schedule a consultation with our medical team. "
-                "Our neurology department features board-certified specialists including Dr. Aris Thorne and Dr. Haseeb Hossain. "
-                "You can select your preferred specialist, date, and time slot directly on our booking portal."
-            )
-            action_buttons = [
-                {"label": "📅 Book Appointment Now", "url": "/appointments/book/", "type": "primary"},
-                {"label": "👨‍⚕️ View Specialist Directory", "url": "/#doctors-section", "type": "secondary"}
+            matching_doctors = [
+                chunk for chunk in retrieved_chunks if "booking_url" in chunk
             ]
+            if matching_doctors:
+                response_text = "These active specialists are listed in the live directory:\n"
+                response_text += "\n".join(
+                    f"• {chunk['content']}" for chunk in matching_doctors
+                )
+                action_buttons = [
+                    {
+                        "label": f"Book {chunk['doctor_name']}",
+                        "url": chunk["booking_url"],
+                        "type": "primary",
+                    }
+                    for chunk in matching_doctors
+                ]
+            else:
+                response_text = (
+                    "There are no active specialists in the directory right now. "
+                    "Please check the directory again later or contact the clinic."
+                )
+                action_buttons = []
+            action_buttons.append({
+                "label": "View Specialist Directory",
+                "url": "/appointments/booking/",
+                "type": "secondary",
+            })
 
         elif intent == "vr_task":
             response_text = (
@@ -270,7 +316,7 @@ class ClinicalLLMChatbot:
             action_buttons = [
                 {"label": "🧠 Run Risk Check", "url": "/dashboard/", "type": "primary"},
                 {"label": "🎮 Play 3D VR Test", "url": "/dashboard/vr-test/", "type": "secondary"},
-                {"label": "📅 Book Doctor", "url": "/appointments/book/", "type": "outline"}
+                {"label": "📅 Book Doctor", "url": "/appointments/booking/", "type": "outline"}
             ]
 
         return {

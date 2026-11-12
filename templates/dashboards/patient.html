@@ -18,9 +18,9 @@
             <a href="{% url 'prescriptions_scanner' %}" class="btn btn-pill btn-pill-light btn-pill-sm">
                 💊 Prescription Scanner ↗
             </a>
-            <button type="button" class="btn btn-pill btn-pill-primary btn-pill-sm" data-action="book-doctor">
+            <a href="{% url 'appointment_booking' %}" class="btn btn-pill btn-pill-primary btn-pill-sm">
                 Book Consultation ↗
-            </button>
+            </a>
         </div>
     </div>
 
@@ -155,9 +155,9 @@
 
                     <!-- Next Step Action Buttons -->
                     <div class="d-flex flex-wrap gap-2">
-                        <button type="button" class="btn btn-pill btn-pill-primary flex-grow-1" data-action="book-doctor" data-department="Neurology">
+                        <a href="{% url 'appointment_booking' %}?department=Neurology" class="btn btn-pill btn-pill-primary flex-grow-1">
                             Schedule Neurologist Consultation ↗
-                        </button>
+                        </a>
                         <a href="{% url 'prescriptions_scanner' %}" class="btn btn-pill btn-pill-light">
                             Scan Existing Rx 💊
                         </a>

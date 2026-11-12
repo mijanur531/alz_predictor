@@ -1,10 +1,15 @@
 from django.core.mail import send_mail
 from django.conf import settings
-from django.template.loader import render_to_string
-from django.utils.html import strip_tags
+from django.urls import reverse
+from smtplib import SMTPException
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _absolute_url(path):
+    return f"{settings.SITE_URL.rstrip('/')}{path}"
+
 
 def send_welcome_email(user):
     """
@@ -12,17 +17,12 @@ def send_welcome_email(user):
     """
     try:
         subject = "Welcome to AlzPredictor Healthcare Platform"
-        context = {
-            "user": user,
-            "login_url": "http://127.0.0.1:8000/login/",
-            "role": user.get_role_display()
-        }
-        
+        login_url = _absolute_url(reverse('login'))
         message = (
             f"Hello {user.first_name or user.username},\n\n"
             f"Welcome to the AlzPredictor & Health Diagnostics Platform!\n"
             f"Your account has been created with the role: {user.get_role_display()}.\n\n"
-            f"You can log in and access your portal here: http://127.0.0.1:8000/login/\n\n"
+            f"You can sign in here: {login_url}\n\n"
             f"Best regards,\nAlzPredictor Medical Team"
         )
         
@@ -30,11 +30,11 @@ def send_welcome_email(user):
         recipient_list = [user.email] if user.email else []
         
         if recipient_list:
-            send_mail(subject, message, from_email, recipient_list, fail_silently=True)
-            logger.info(f"Welcome email dispatched to {user.email}")
+            send_mail(subject, message, from_email, recipient_list)
+            logger.info("Welcome email dispatched for user %s", user.pk)
             return True
-    except Exception as e:
-        logger.error(f"Failed to send welcome email: {e}")
+    except (OSError, SMTPException):
+        logger.exception("Failed to send welcome email for user %s", user.pk)
     return False
 
 
@@ -56,7 +56,7 @@ def send_prediction_report_email(user, prediction_record):
             f"----------------------------------------\n\n"
             f"Clinical Notice: This assessment is an academic prototype and is not a certified diagnostic tool.\n"
             f"We encourage you to book a consultation with our neurology specialists on the portal.\n\n"
-            f"View Full Report: http://127.0.0.1:8000/dashboard/\n\n"
+            f"View Full Report: {_absolute_url(reverse('patient_dashboard'))}\n\n"
             f"Best regards,\nAlzPredictor Clinical Department"
         )
         
@@ -64,11 +64,11 @@ def send_prediction_report_email(user, prediction_record):
         recipient_list = [user.email] if user.email else []
         
         if recipient_list:
-            send_mail(subject, message, from_email, recipient_list, fail_silently=True)
-            logger.info(f"Prediction report email sent to {user.email}")
+            send_mail(subject, message, from_email, recipient_list)
+            logger.info("Prediction report email sent for user %s", user.pk)
             return True
-    except Exception as e:
-        logger.error(f"Failed to send prediction report email: {e}")
+    except (OSError, SMTPException):
+        logger.exception("Failed to send prediction report email for user %s", user.pk)
     return False
 
 
@@ -90,11 +90,10 @@ def send_appointment_confirmation_email(appointment):
             f"Department: {doctor.department}\n"
             f"Date: {appointment.appointment_date}\n"
             f"Time Slot: {appointment.time_slot}\n"
-            f"Reason: {appointment.reason or 'General Consultation'}\n"
             f"Status: {appointment.status}\n"
             f"----------------------------------------\n\n"
             f"Location: AlzPredictor Hospital Medical Center / Online Consultation\n\n"
-            f"Manage Appointments: http://127.0.0.1:8000/dashboard/\n\n"
+            f"Manage Appointments: {_absolute_url(reverse('appointment_booking'))}\n\n"
             f"Best regards,\nAlzPredictor Appointments Desk"
         )
         
@@ -104,11 +103,11 @@ def send_appointment_confirmation_email(appointment):
             recipients.append(doctor.email)
             
         if recipients:
-            send_mail(subject, message, from_email, recipients, fail_silently=True)
-            logger.info(f"Appointment confirmation email sent for #{appointment.id}")
+            send_mail(subject, message, from_email, recipients)
+            logger.info("Appointment confirmation email sent for #%s", appointment.id)
             return True
-    except Exception as e:
-        logger.error(f"Failed to send appointment confirmation email: {e}")
+    except (OSError, SMTPException):
+        logger.exception("Failed to send appointment confirmation email for appointment %s", appointment.pk)
     return False
 
 
@@ -128,16 +127,16 @@ def send_critical_alert_email(contact_message):
             f"\"{contact_message.message}\"\n"
             f"========================================\n\n"
             f"Action Required: Please review this inquiry immediately on the Clinical Intake Board:\n"
-            f"http://127.0.0.1:8000/service/dashboard/\n\n"
+            f"{_absolute_url(reverse('service_dashboard'))}\n\n"
             f"AlzPredictor Emergency Triage System"
         )
         
         from_email = getattr(settings, 'DEFAULT_FROM_EMAIL', 'alerts@alzpredictor.com')
         staff_recipients = getattr(settings, 'STAFF_ALERT_EMAILS', ['staff@alzpredictor.com', 'doctor@alzpredictor.com'])
         
-        send_mail(subject, message, from_email, staff_recipients, fail_silently=True)
-        logger.info(f"Critical alert email dispatched for contact #{contact_message.id}")
+        send_mail(subject, message, from_email, staff_recipients)
+        logger.info("Critical alert email dispatched for contact #%s", contact_message.id)
         return True
-    except Exception as e:
-        logger.error(f"Failed to send critical alert email: {e}")
+    except (OSError, SMTPException):
+        logger.exception("Failed to send critical alert email for contact %s", contact_message.id)
     return False

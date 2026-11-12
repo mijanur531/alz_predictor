@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.db.models import Count
 from celery.result import AsyncResult
+from django.utils import timezone
 
 from accounts.models import User, PatientProfile
 from patients.models import PredictionRecord, ContactMessage, VRTestRecord
@@ -19,6 +20,7 @@ from .serializers import (
     UserRegisterSerializer,
     UserSerializer,
     PatientProfileSerializer,
+    ServiceProviderProfileSerializer,
     PredictInputSerializer,
     PredictionRecordSerializer,
     PredictionRecordReviewSerializer,
@@ -31,6 +33,8 @@ from .serializers import (
     PrescriptionScanSerializer,
     TrainedModelArtifactSerializer,
     TrainingTriggerSerializer,
+    PasswordResetRequestSerializer,
+    ChatbotQuerySerializer,
 )
 
 # Custom Throttles
@@ -41,6 +45,28 @@ class PredictThrottle(UserRateThrottle):
 
 class ContactThrottle(AnonRateThrottle):
     scope = 'contact'
+
+
+class PasswordResetRequestView(views.APIView):
+    authentication_classes = ()
+    permission_classes = (permissions.AllowAny,)
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(
+            data=request.data,
+            context={'request': request},
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {
+                "detail": (
+                    "If an account exists for that email address, "
+                    "you'll receive a password reset link shortly."
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class RegisterView(generics.CreateAPIView):
@@ -80,6 +106,8 @@ class CurrentUserView(views.APIView):
         data = UserSerializer(user).data
         if user.role == 'patient' and hasattr(user, 'patient_profile'):
             data['profile'] = PatientProfileSerializer(user.patient_profile).data
+        elif hasattr(user, 'provider_profile'):
+            data['profile'] = ServiceProviderProfileSerializer(user.provider_profile).data
         return Response(data)
 
 
@@ -154,21 +182,20 @@ class JWTLogoutView(views.APIView):
 
 class ChatbotQueryView(views.APIView):
     """
-    RAG + NLP + LLM clinical assistant endpoint for patient queries,
-    symptom checking, prescription analysis, and doctor triage.
+    RAG and NLP assistant endpoint using local knowledge and the live doctor directory.
     """
     permission_classes = (permissions.AllowAny,)
 
     def post(self, request):
+        serializer = ChatbotQuerySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
         from core.rag_chatbot import clinical_chatbot
-        message = request.data.get("message", "").strip()
-        if not message:
-            return Response({"detail": "Please provide a query message."}, status=status.HTTP_400_BAD_REQUEST)
-        
+        doctors = Doctor.objects.filter(is_active=True).order_by("department", "name")
         result = clinical_chatbot.process_query(
-            message,
-            patient_context=request.user if request.user.is_authenticated else None
+            serializer.validated_data["message"],
+            doctors=doctors,
         )
+        result["retrieved_at"] = timezone.now().isoformat()
         return Response(result, status=status.HTTP_200_OK)
 
 

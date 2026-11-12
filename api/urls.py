@@ -25,6 +25,7 @@ from .views import (
     ServiceReviewCaseView,
     ManagementStatsView,
     ContactSubmitView,
+    PasswordResetRequestView,
 )
 
 app_name = 'api'
@@ -39,6 +40,7 @@ router.register('training', ModelTrainingViewSet, basename='training')
 urlpatterns = [
     # Auth Endpoints
     path('auth/register/', RegisterView.as_view(), name='register'),
+    path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
     path('auth/csrf/', CSRFTokenView.as_view(), name='csrf_token'),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

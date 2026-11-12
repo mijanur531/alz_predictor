@@ -1,4 +1,7 @@
+import re
+
 import pytest
+from django.test import override_settings
 from django.urls import reverse
 from accounts.models import User
 from patients.models import VRTestRecord
@@ -59,6 +62,7 @@ class TestNativeCookieSystemAndAuthSignals:
         
         res = client.post(url, {'username': 'cookie_patient', 'password': 'password123'})
         assert res.status_code == 302
+        assert res.url == reverse("patient_dashboard")
         assert 'user_role' in res.cookies
         assert res.cookies['user_role'].value == 'patient'
         assert 'username' in res.cookies
@@ -84,7 +88,7 @@ class TestNativeCookieSystemAndAuthSignals:
             'email': 'new_patient@example.com',
             'password1': 'StrongPassword123!',
             'password2': 'StrongPassword123!',
-            'role': 'patient',
+            'role': 'management',
             'first_name': 'New',
             'last_name': 'Patient',
             'age': 62,
@@ -97,14 +101,94 @@ class TestNativeCookieSystemAndAuthSignals:
         
         res = client.post(url, reg_payload)
         assert res.status_code == 302
+        assert res.url == reverse("login")
+        assert not client.session.get("_auth_user_id")
         
-        # Check cookies set
-        assert 'user_role' in res.cookies
-        assert res.cookies['user_role'].value == 'patient'
-        assert 'username' in res.cookies
-        assert res.cookies['username'].value == 'new_patient_reg'
+        assert 'user_role' not in res.cookies
+        assert 'username' not in res.cookies
+        registered_user = User.objects.get(username="new_patient_reg")
+        assert registered_user.role == "patient"
         
         # Check welcome email sent via signal
         assert len(mail.outbox) >= 1
         assert "Welcome to AlzPredictor" in mail.outbox[0].subject
+
+    @pytest.mark.parametrize(
+        ("role", "destination"),
+        [
+            ("patient", "patient_dashboard"),
+            ("doctor", "service_dashboard"),
+            ("nurse", "service_dashboard"),
+            ("management", "management_dashboard"),
+        ],
+    )
+    def test_login_redirects_each_role_to_its_dashboard(self, client, db, role, destination):
+        user = User.objects.create_user(
+            username=f"login_{role}",
+            password="SecurePassword456!",
+            role=role,
+        )
+        response = client.post(reverse("login"), {
+            "username": user.username,
+            "password": "SecurePassword456!",
+        })
+        assert response.status_code == 302
+        assert response.url == reverse(destination)
+
+    def test_login_honors_local_next_url(self, client, patient_user):
+        response = client.post(
+            f"{reverse('login')}?next={reverse('appointment_booking')}",
+            {"username": patient_user.username, "password": "password123"},
+        )
+        assert response.status_code == 302
+        assert response.url == reverse("appointment_booking")
+
+
+@pytest.mark.django_db
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_password_reset_flow(client):
+    from django.core import mail
+
+    user = User.objects.create_user(
+        username="reset_patient",
+        email="reset@example.com",
+        password="InitialPassword123!",
+        role="patient",
+    )
+    mail.outbox.clear()
+
+    response = client.post(reverse("password_reset"), {"email": user.email})
+    assert response.status_code == 302
+    assert response.url == reverse("password_reset_done")
+    assert len(mail.outbox) == 1
+
+    reset_link = re.search(r"http://testserver(/reset/\S+)", mail.outbox[0].body)
+    assert reset_link is not None
+    reset_path = reset_link.group(1)
+
+    response = client.get(reset_path)
+    assert response.status_code == 302
+    confirm_path = response.url
+    assert client.get(confirm_path).status_code == 200
+
+    mismatch_response = client.post(confirm_path, {
+        "new_password1": "NewSecurePassword456!",
+        "new_password2": "DifferentPassword789!",
+    })
+    assert mismatch_response.status_code == 200
+    assert "new_password2" in mismatch_response.context["form"].errors
+    user.refresh_from_db()
+    assert user.check_password("InitialPassword123!")
+
+    response = client.post(confirm_path, {
+        "new_password1": "NewSecurePassword456!",
+        "new_password2": "NewSecurePassword456!",
+    })
+    assert response.status_code == 302
+    assert response.url == reverse("password_reset_complete")
+
+    user.refresh_from_db()
+    assert user.check_password("NewSecurePassword456!")
+    complete_response = client.get(reverse("password_reset_complete"))
+    assert b"content=\"5;url=/login/\"" in complete_response.content
 

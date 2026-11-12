@@ -1,11 +1,11 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm
+from django.db import transaction
 from accounts.models import User, PatientProfile
 from patients.models import PredictionRecord, ContactMessage
 
 class UserRegisterForm(UserCreationForm):
     email = forms.EmailField(required=True)
-    role = forms.ChoiceField(choices=User.ROLE_CHOICES, required=True, initial='patient')
     
     # Optional clinical values if registering as a patient
     age = forms.IntegerField(required=False, min_value=0, max_value=120)
@@ -17,22 +17,16 @@ class UserRegisterForm(UserCreationForm):
     family_history = forms.BooleanField(required=False, label="Family History of Alzheimer's")
     physical_activity = forms.FloatField(required=False, min_value=0.0, label="Physical Activity (hours/week)")
 
-    # Optional staff details
-    department = forms.CharField(required=False, max_length=50)
-    qualification = forms.CharField(required=False, max_length=100)
-
     class Meta(UserCreationForm.Meta):
         model = User
-        fields = UserCreationForm.Meta.fields + ('email', 'role')
+        fields = UserCreationForm.Meta.fields + ('email',)
 
     def save(self, commit=True):
         user = super().save(commit=False)
-        user.role = self.cleaned_data['role']
+        user.role = 'patient'
         if commit:
-            user.save()
-            
-            # Fill profile fields based on role
-            if user.role == 'patient':
+            with transaction.atomic():
+                user.save()
                 profile = user.patient_profile
                 profile.age = self.cleaned_data.get('age')
                 profile.gender = self.cleaned_data.get('gender')
@@ -42,11 +36,6 @@ class UserRegisterForm(UserCreationForm):
                 profile.cognitive_score = self.cleaned_data.get('cognitive_score')
                 profile.family_history = self.cleaned_data.get('family_history') or False
                 profile.physical_activity = self.cleaned_data.get('physical_activity')
-                profile.save()
-            else:
-                profile = user.provider_profile
-                profile.department = self.cleaned_data.get('department') or 'General Medicine'
-                profile.qualification = self.cleaned_data.get('qualification') or 'Credentialed Staff'
                 profile.save()
                 
         return user

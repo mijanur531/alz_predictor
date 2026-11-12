@@ -1,5 +1,9 @@
+from datetime import timedelta
+
 import pytest
+from django.test import override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIClient
 from accounts.models import User, PatientProfile, ServiceProviderProfile
@@ -82,6 +86,21 @@ class TestRolePermissions:
         url = reverse('api:management_stats')
         res = api_client.get(url)
         assert res.status_code == status.HTTP_200_OK
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["doctor", "nurse", "management"])
+def test_current_user_returns_staff_profile(api_client, role):
+    user = User.objects.create_user(
+        username=f"profile_{role}",
+        password="SecurePassword456!",
+        role=role,
+    )
+    api_client.force_authenticate(user=user)
+    response = api_client.get(reverse("api:current_user"))
+    assert response.status_code == status.HTTP_200_OK
+    assert response.data["role"] == role
+    assert response.data["profile"]["department"] == "General Medicine"
 
 
 @pytest.mark.django_db
@@ -220,8 +239,8 @@ class TestAppointmentsREST:
         
         payload = {
             "doctor": test_doctor.id,
-            "appointment_date": "2026-10-20",
-            "time_slot": "10:00 AM - 10:45 AM",
+            "appointment_date": (timezone.localdate() + timedelta(days=1)).isoformat(),
+            "time_slot": "10:30 AM - 11:30 AM",
             "reason": "Memory assessment"
         }
         
@@ -244,6 +263,33 @@ class TestAppointmentsREST:
         res_cancel = api_client.post(cancel_url)
         assert res_cancel.status_code == status.HTTP_200_OK
         assert res_cancel.data['status'] == 'Cancelled'
+
+    def test_cannot_book_past_or_already_taken_slot(self, api_client, patient_user, test_doctor):
+        api_client.force_authenticate(user=patient_user)
+        url = reverse("api:appointments-book")
+        slot = "09:00 AM - 10:00 AM"
+        date = timezone.localdate() + timedelta(days=3)
+        payload = {
+            "doctor": test_doctor.pk,
+            "appointment_date": date.isoformat(),
+            "time_slot": slot,
+        }
+
+        assert api_client.post(url, payload, format="json").status_code == status.HTTP_201_CREATED
+        duplicate = api_client.post(url, payload, format="json")
+        assert duplicate.status_code == status.HTTP_400_BAD_REQUEST
+        assert "time_slot" in duplicate.data
+
+        payload["appointment_date"] = (timezone.localdate() - timedelta(days=1)).isoformat()
+        past = api_client.post(url, payload, format="json")
+        assert past.status_code == status.HTTP_400_BAD_REQUEST
+        assert "appointment_date" in past.data
+
+        payload["appointment_date"] = (timezone.localdate() + timedelta(days=4)).isoformat()
+        payload["time_slot"] = "not-a-scheduled-slot"
+        invalid_slot = api_client.post(url, payload, format="json")
+        assert invalid_slot.status_code == status.HTTP_400_BAD_REQUEST
+        assert "time_slot" in invalid_slot.data
 
 
 @pytest.mark.django_db
@@ -330,6 +376,7 @@ class TestModelArtifactActivation:
 
 
 @pytest.mark.django_db
+@pytest.mark.django_db
 class TestChatbotRAGREST:
     def test_chatbot_query_general(self, api_client):
         url = reverse('api:chatbot_query')
@@ -341,12 +388,54 @@ class TestChatbotRAGREST:
         assert len(res.data['actions']) >= 1
 
     def test_chatbot_query_appointment_intent(self, api_client):
+        from appointments.models import Doctor
+
+        doctor = Doctor.objects.create(
+            name="Dr. Live Directory",
+            specialty="Neurology",
+            department="Neurology",
+            qualification="MD",
+            available_days="Mon-Fri",
+            available_hours="09:00 AM - 05:00 PM",
+        )
         url = reverse('api:chatbot_query')
         payload = {"message": "I want to schedule an appointment with a neurologist"}
         res = api_client.post(url, payload, format='json')
         assert res.status_code == status.HTTP_200_OK
         assert res.data['intent'] == "book_appointment"
-        assert any(a['url'] == '/appointments/book/' for a in res.data['actions'])
+        assert any(
+            a["url"].startswith(f"/appointments/booking/?doctor={doctor.pk}")
+            for a in res.data["actions"]
+        )
+        assert any("Dr. Live Directory" in source for source in res.data["retrieved_sources"])
+        assert res.data["retrieved_at"]
+
+    def test_chatbot_query_rejects_empty_or_non_text_message(self, api_client):
+        url = reverse("api:chatbot_query")
+        for payload in ({"message": "   "}, {"message": 42}):
+            response = api_client.post(url, payload, format="json")
+            assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+
+@pytest.mark.django_db
+class TestPublicRegistration:
+    def test_registration_creates_patient_and_rejects_staff_role(self, api_client):
+        url = reverse("api:register")
+        payload = {
+            "username": "api_new_patient",
+            "email": "new-patient@example.com",
+            "password": "BlueMountain_82!River",
+            "role": "patient",
+        }
+        response = api_client.post(url, payload, format="json")
+        assert response.status_code == status.HTTP_201_CREATED
+        assert response.data["user"]["role"] == "patient"
+        assert User.objects.get(username="api_new_patient").patient_profile
+
+        payload.update(username="api_new_manager", role="management")
+        staff_response = api_client.post(url, payload, format="json")
+        assert staff_response.status_code == status.HTTP_400_BAD_REQUEST
+        assert "role" in staff_response.data
 
 
 class TestPrescriptionAdvisorUnit:
@@ -415,6 +504,36 @@ class TestPatientPredictionPartialUpdate:
         res = api_client.patch(detail_url, {"review_comments": "Updated self-reported memory latency."}, format='json')
         assert res.status_code == status.HTTP_200_OK
         assert res.data['review_comments'] == "Updated self-reported memory latency."
+
+
+@pytest.mark.django_db
+@override_settings(EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+def test_password_reset_api_is_non_enumerating(api_client):
+    from django.core import mail
+
+    user = User.objects.create_user(
+        username="api_reset_patient",
+        email="api-reset@example.com",
+        password="InitialPassword123!",
+        role="patient",
+    )
+    mail.outbox.clear()
+    url = reverse("api:password_reset_request")
+
+    existing_response = api_client.post(url, {"email": user.email}, format="json")
+    assert existing_response.status_code == status.HTTP_200_OK
+    assert len(mail.outbox) == 1
+
+    success_message = existing_response.data["detail"]
+    mail.outbox.clear()
+    unknown_response = api_client.post(
+        url,
+        {"email": "not-registered@example.com"},
+        format="json",
+    )
+    assert unknown_response.status_code == status.HTTP_200_OK
+    assert unknown_response.data["detail"] == success_message
+    assert len(mail.outbox) == 0
 
 
 

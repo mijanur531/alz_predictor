@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from accounts.models import PatientProfile
 
 class Doctor(models.Model):
@@ -47,6 +48,15 @@ class Appointment(models.Model):
     status = models.CharField(max_length=30, choices=STATUS_CHOICES, default="Confirmed")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("doctor", "appointment_date", "time_slot"),
+                condition=~Q(status="Cancelled"),
+                name="unique_active_doctor_slot",
+            ),
+        ]
 
     def __str__(self):
         return f"Appointment with {self.doctor.name} for {self.patient.user.username} on {self.appointment_date} ({self.time_slot})"

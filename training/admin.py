@@ -1,3 +1,6 @@
-from django.contrib import admin
+from django.contrib import admin  # pyright: ignore[reportMissingModuleSource]
+from .models import TrainedModelArtifact
 
-# Register your models here.
+@admin.register(TrainedModelArtifact)
+class TrainedModelArtifactAdmin(admin.ModelAdmin):
+    pass

@@ -47,17 +47,6 @@
                     </div>
                 </div>
 
-                <div class="mb-4">
-                    <label for="id_role" class="form-label">Select Account Role</label>
-                    <select name="role" id="id_role" class="form-select border-info">
-                        <option value="patient" {% if form.role.value == 'patient' %}selected{% endif %}>Patient (Intake profile for risk assessments)</option>
-                        <option value="doctor" {% if form.role.value == 'doctor' %}selected{% endif %}>Doctor (Review patient evaluations)</option>
-                        <option value="nurse" {% if form.role.value == 'nurse' %}selected{% endif %}>Nurse (Review patient evaluations)</option>
-                        <option value="technician" {% if form.role.value == 'technician' %}selected{% endif %}>Technician (Platform Support)</option>
-                        <option value="management" {% if form.role.value == 'management' %}selected{% endif %}>Management (Live ops analytics dashboard)</option>
-                    </select>
-                </div>
-
                 <!-- Patient-Specific Clinical Details Section -->
                 <div id="patient-details-section" class="mb-4 p-4 rounded border border-secondary bg-opacity-25 bg-secondary">
                     <h4 class="h5 fw-bold text-info mb-3">Clinical / Lifestyle Baseline (Required for Patient)</h4>
@@ -111,25 +100,14 @@
                     </div>
                 </div>
 
-                <!-- Staff-Specific details Section -->
-                <div id="staff-details-section" class="mb-4 p-4 rounded border border-secondary bg-opacity-25 bg-secondary d-none">
-                    <h4 class="h5 fw-bold text-warning mb-3">Clinical Staff / Admin Information</h4>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="id_department" class="form-label">Clinical Department</label>
-                            <input type="text" name="department" id="id_department" class="form-control" placeholder="e.g. Neurology, Geriatrics" value="{{ form.department.value|default_if_none:'' }}">
-                        </div>
-                        <div class="col-md-6">
-                            <label for="id_qualification" class="form-label">Qualification / Title</label>
-                            <input type="text" name="qualification" id="id_qualification" class="form-control" placeholder="e.g. MD, Board Certified NP, PhD" value="{{ form.qualification.value|default_if_none:'' }}">
-                        </div>
-                    </div>
-                </div>
-
                 <div class="d-grid mt-4">
                     <button type="submit" class="btn btn-primary-gradient btn-lg">Create Account</button>
                 </div>
             </form>
+
+            <p class="small text-muted text-center mt-3 mb-0">
+                Patient accounts can be created here. Doctor, nurse, and management accounts are provisioned by an administrator.
+            </p>
             
             <div class="text-center mt-4">
                 <span class="text-muted">Already have an account?</span>
@@ -138,30 +116,4 @@
         </div>
     </div>
 </div>
-{% endblock %}
-
-{% block extra_js %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const roleSelect = document.getElementById('id_role');
-        const patientSection = document.getElementById('patient-details-section');
-        const staffSection = document.getElementById('staff-details-section');
-        
-        function toggleSections() {
-            const role = roleSelect.value;
-            if (role === 'patient') {
-                patientSection.classList.remove('d-none');
-                staffSection.classList.add('d-none');
-            } else {
-                patientSection.classList.add('d-none');
-                staffSection.classList.remove('d-none');
-            }
-        }
-        
-        if (roleSelect) {
-            roleSelect.addEventListener('change', toggleSections);
-            toggleSections(); // run once on initialization
-        }
-    });
-</script>
 {% endblock %}

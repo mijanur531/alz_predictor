@@ -1,9 +1,50 @@
+from django.conf import settings
+from django.contrib.auth.password_validation import validate_password
+from django.contrib.auth.forms import PasswordResetForm
+from django.db import IntegrityError, transaction
+from django.utils import timezone
 from rest_framework import serializers
 from accounts.models import User, PatientProfile, ServiceProviderProfile
 from patients.models import PredictionRecord, ContactMessage, VRTestRecord
 from appointments.models import Doctor, Appointment
+from appointments.forms import APPOINTMENT_TIME_SLOTS
 from prescriptions.models import PrescriptionScan
 from training.models import TrainedModelArtifact
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def create(self, validated_data):
+        request = self.context['request']
+        form = PasswordResetForm(data=validated_data)
+        if not form.is_valid():
+            raise serializers.ValidationError(form.errors)
+
+        form.save(
+            request=request,
+            use_https=request.is_secure(),
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            email_template_name='accounts/password_reset_email.html',
+            subject_template_name='accounts/password_reset_subject.txt',
+        )
+        return validated_data
+
+
+class StrictTextField(serializers.CharField):
+    def to_internal_value(self, data):
+        if not isinstance(data, str):
+            raise serializers.ValidationError("Expected a text query.")
+        return super().to_internal_value(data)
+
+
+class ChatbotQuerySerializer(serializers.Serializer):
+    message = StrictTextField(
+        min_length=1,
+        max_length=1000,
+        trim_whitespace=True,
+    )
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,6 +67,8 @@ class ServiceProviderProfileSerializer(serializers.ModelSerializer):
 class UserRegisterSerializer(serializers.ModelSerializer):
     # Registration fields
     password = serializers.CharField(write_only=True, min_length=8)
+    email = serializers.EmailField(required=True)
+    role = serializers.ChoiceField(choices=(("patient", "Patient"),), default="patient")
     
     # Clinical profile optional fields (for patients)
     age = serializers.IntegerField(required=False, allow_null=True)
@@ -37,22 +80,15 @@ class UserRegisterSerializer(serializers.ModelSerializer):
     family_history = serializers.BooleanField(required=False, default=False)
     physical_activity = serializers.FloatField(required=False, allow_null=True)
     
-    # Staff profile optional fields (for doctor/nurse/technician)
-    department = serializers.CharField(required=False, allow_null=True)
-    qualification = serializers.CharField(required=False, allow_null=True)
-
     class Meta:
         model = User
         fields = ('username', 'password', 'email', 'role', 'first_name', 'last_name',
                   'age', 'gender', 'education_level', 'bmi', 'smoking', 'cognitive_score',
-                  'family_history', 'physical_activity', 'department', 'qualification')
+                  'family_history', 'physical_activity')
 
-    def validate(self, attrs):
-        role = attrs.get('role', 'patient')
-        if role == 'patient':
-            # Optionally validate patient fields if needed
-            pass
-        return attrs
+    def validate_password(self, password):
+        validate_password(password)
+        return password
 
     def create(self, validated_data):
         # Extract profile fields
@@ -67,11 +103,6 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             'physical_activity': validated_data.pop('physical_activity', None)
         }
         
-        staff_data = {
-            'department': validated_data.pop('department', 'General Medicine'),
-            'qualification': validated_data.pop('qualification', 'General Staff')
-        }
-
         # Create user (triggers signal to create default profile models)
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -82,17 +113,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             last_name=validated_data.get('last_name', '')
         )
 
-        # Update the created profile with validated details
-        if user.role == 'patient':
-            profile = user.patient_profile
-            for key, val in profile_data.items():
-                setattr(profile, key, val)
-            profile.save()
-        else:
-            profile = user.provider_profile
-            for key, val in staff_data.items():
-                setattr(profile, key, val)
-            profile.save()
+        profile = user.patient_profile
+        for key, val in profile_data.items():
+            setattr(profile, key, val)
+        profile.save()
 
         return user
 
@@ -162,13 +186,45 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
 
 class AppointmentCreateSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(
+        queryset=Doctor.objects.filter(is_active=True)
+    )
+    time_slot = serializers.ChoiceField(choices=APPOINTMENT_TIME_SLOTS)
+
     class Meta:
         model = Appointment
         fields = ('doctor', 'appointment_date', 'time_slot', 'reason')
 
+    def validate_appointment_date(self, appointment_date):
+        if appointment_date < timezone.localdate():
+            raise serializers.ValidationError("Choose today or a future date.")
+        return appointment_date
+
+    def validate(self, attrs):
+        conflict = Appointment.objects.filter(
+            doctor=attrs["doctor"],
+            appointment_date=attrs["appointment_date"],
+            time_slot=attrs["time_slot"],
+        ).exclude(status="Cancelled").exists()
+        if conflict:
+            raise serializers.ValidationError(
+                {"time_slot": "That specialist's selected time is no longer available."}
+            )
+        return attrs
+
     def create(self, validated_data):
         patient = self.context['request'].user.patient_profile
-        return Appointment.objects.create(patient=patient, status="Confirmed", **validated_data)
+        try:
+            with transaction.atomic():
+                return Appointment.objects.create(
+                    patient=patient,
+                    status="Confirmed",
+                    **validated_data,
+                )
+        except IntegrityError as error:
+            raise serializers.ValidationError(
+                {"time_slot": "That specialist's selected time is no longer available."}
+            ) from error
 
 
 class VRTestRecordSerializer(serializers.ModelSerializer):

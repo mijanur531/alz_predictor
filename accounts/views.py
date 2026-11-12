@@ -1,12 +1,11 @@
-from django.shortcuts import render, redirect, get_object_or_404
+from django.shortcuts import render, redirect
 from django.urls import reverse_lazy, reverse
-from django.views.generic import TemplateView, CreateView, FormView, ListView
+from django.views.generic import TemplateView, CreateView, ListView
 from django.contrib.auth.views import LoginView, LogoutView
-from django.contrib.auth import login
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 
-from accounts.models import User, PatientProfile
+from appointments.models import Doctor
 from patients.models import PredictionRecord, ContactMessage
 from management.models import AuditLog
 from patients.tasks import process_contact_message, run_prediction_task
@@ -17,6 +16,10 @@ class RoleRedirectMixin:
     Redirects user after login based on their user role.
     """
     def get_success_url(self):
+        redirect_to = self.get_redirect_url()
+        if redirect_to:
+            return redirect_to
+
         user = self.request.user
         if user.role == 'patient':
             return reverse('patient_dashboard')
@@ -29,6 +32,13 @@ class RoleRedirectMixin:
 
 class HomeView(TemplateView):
     template_name = 'home.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['featured_doctors'] = Doctor.objects.filter(
+            is_active=True
+        ).order_by('department', 'name')[:3]
+        return context
 
 
 class CustomLoginView(RoleRedirectMixin, LoginView):
@@ -77,30 +87,18 @@ class RegisterView(CreateView):
     template_name = 'accounts/register.html'
     
     def get_success_url(self):
-        user = self.object
-        if user.role == 'patient':
-            return reverse('patient_dashboard')
-        elif user.role in ('doctor', 'nurse'):
-            return reverse('service_dashboard')
-        elif user.role == 'management':
-            return reverse('management_dashboard')
-        return reverse('home')
+        return reverse('login')
 
     def form_valid(self, form):
         response = super().form_valid(form)
         user = self.object
-        login(self.request, user)  # Auto login after signup
-        
-        # Set cookies
-        response.set_cookie('user_role', user.role, max_age=86400, samesite='Lax')
-        response.set_cookie('username', user.username, max_age=86400, samesite='Lax')
 
-        # Audit log on register
         AuditLog.objects.create(
             user=user,
             action="user_registered",
             metadata={"role": user.role}
         )
+        messages.success(self.request, "Your account was created. Sign in to continue.")
         return response
 
 

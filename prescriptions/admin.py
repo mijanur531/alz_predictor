@@ -1,3 +1,8 @@
-from django.contrib import admin
+from django.contrib import admin  # pyright: ignore[reportMissingModuleSource]
+from .models import PrescriptionScan
 
-# Register your models here.
+
+@admin.register(PrescriptionScan)
+class PrescriptionScanAdmin(admin.ModelAdmin):
+    pass
+    print("Prescription Scan Admin registered successfully.");

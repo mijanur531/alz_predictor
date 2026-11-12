@@ -219,6 +219,14 @@ CSRF_COOKIE_AGE = 86400 * 7
 EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.console.EmailBackend')
 DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='no-reply@alzpredictor.com')
 STAFF_ALERT_EMAILS = env.list('STAFF_ALERT_EMAILS', default=['staff@alzpredictor.com', 'doctor@alzpredictor.com'])
+SITE_URL = env.str('SITE_URL', default='http://127.0.0.1:8000')
+EMAIL_HOST = env.str('EMAIL_HOST', default='')
+EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST_USER = env.str('EMAIL_HOST_USER', default='')
+EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD', default='')
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
+EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)
 
 # Authentication URL redirects
 LOGIN_URL = 'login'
