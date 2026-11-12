@@ -220,3 +220,9 @@ EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.cons
 DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='no-reply@alzpredictor.com')
 STAFF_ALERT_EMAILS = env.list('STAFF_ALERT_EMAILS', default=['staff@alzpredictor.com', 'doctor@alzpredictor.com'])
 
+# Authentication URL redirects
+LOGIN_URL = 'login'
+LOGIN_REDIRECT_URL = 'patient_dashboard'
+LOGOUT_REDIRECT_URL = 'home'
+
+

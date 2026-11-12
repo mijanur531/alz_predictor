@@ -232,6 +232,14 @@ class PatientPredictionDetailView(views.APIView):
         )
         return Response({"detail": "Prediction record deleted successfully."}, status=status.HTTP_200_OK)
 
+    def patch(self, request, pk):
+        prediction = get_object_or_404(PredictionRecord, pk=pk, patient=request.user.patient_profile)
+        comments = request.data.get('review_comments')
+        if comments is not None:
+            prediction.review_comments = comments
+            prediction.save(update_fields=['review_comments'])
+        return Response(PredictionRecordSerializer(prediction).data, status=status.HTTP_200_OK)
+
     def post(self, request, pk):
         # Support POST method for deletion (e.g. /predict/<id>/delete/)
         return self.delete(request, pk)
@@ -416,13 +424,24 @@ class ContactSubmitView(views.APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class DoctorViewSet(viewsets.ReadOnlyModelViewSet):
+class DoctorViewSet(viewsets.ModelViewSet):
     """
-    List and retrieve verified medical specialists / doctors.
+    Full CRUD ViewSet for verified medical specialists / doctors:
+    - Public: List & Retrieve
+    - Management/Staff: Create, Update, Partial Update, Destroy
     """
     queryset = Doctor.objects.filter(is_active=True).order_by('department', 'name')
     serializer_class = DoctorSerializer
-    permission_classes = (permissions.AllowAny,)
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated(), IsManagement()]
+
+    def get_queryset(self):
+        if self.request.user.is_authenticated and (getattr(self.request.user, 'is_staff', False) or getattr(self.request.user, 'role', '') == 'management'):
+            return Doctor.objects.all().order_by('department', 'name')
+        return Doctor.objects.filter(is_active=True).order_by('department', 'name')
 
 
 class AppointmentViewSet(viewsets.ModelViewSet):

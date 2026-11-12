@@ -27,3 +27,21 @@ class JWTCookieAuthentication(JWTAuthentication):
                 return None
                 
         return None
+
+
+try:
+    from drf_spectacular.extensions import OpenApiAuthenticationExtension
+
+    class JWTCookieAuthenticationScheme(OpenApiAuthenticationExtension):
+        target_class = 'api.authentication.JWTCookieAuthentication'
+        name = 'jwtCookieAuth'
+
+        def get_security_definition(self, auto_schema):
+            return {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+                'description': 'Paste your JWT Access Token obtained from /api/v1/auth/jwt-login/ or /api/v1/auth/token/'
+            }
+except ImportError:
+    pass

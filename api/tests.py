@@ -361,4 +361,61 @@ class TestPrescriptionAdvisorUnit:
         assert "Beneficial Synergistic Combination" in report['interaction_alerts'][0]['severity']
 
 
+@pytest.mark.django_db
+class TestDoctorFullCRUD:
+    def test_manager_can_create_update_delete_doctor(self, api_client, manager_user):
+        api_client.force_authenticate(user=manager_user)
+        list_url = reverse('api:doctors-list')
+        
+        # 1. CREATE Doctor (POST)
+        payload = {
+            "name": "Dr. Clara Oswald",
+            "specialty": "Cognitive Behavioral Neurology",
+            "department": "Neurology",
+            "qualification": "MD, PhD",
+            "experience_years": 12,
+            "consultation_fee": 210,
+            "is_active": True
+        }
+        res_create = api_client.post(list_url, payload, format='json')
+        assert res_create.status_code == status.HTTP_201_CREATED
+        doc_id = res_create.data['id']
+        assert res_create.data['name'] == "Dr. Clara Oswald"
+        
+        # 2. UPDATE Doctor (PATCH)
+        detail_url = reverse('api:doctors-detail', kwargs={'pk': doc_id})
+        res_patch = api_client.patch(detail_url, {"consultation_fee": 230}, format='json')
+        assert res_patch.status_code == status.HTTP_200_OK
+        assert res_patch.data['consultation_fee'] == 230
+        
+        # 3. DELETE Doctor (DELETE)
+        res_delete = api_client.delete(detail_url)
+        assert res_delete.status_code in (status.HTTP_204_NO_CONTENT, status.HTTP_200_OK)
+
+    def test_patient_cannot_create_doctor(self, api_client, patient_user):
+        api_client.force_authenticate(user=patient_user)
+        list_url = reverse('api:doctors-list')
+        res = api_client.post(list_url, {"name": "Fake Doctor"}, format='json')
+        assert res.status_code == status.HTTP_403_FORBIDDEN
+
+
+@pytest.mark.django_db
+class TestPatientPredictionPartialUpdate:
+    def test_patient_can_update_prediction_notes(self, api_client, patient_user):
+        prediction = PredictionRecord.objects.create(
+            patient=patient_user.patient_profile,
+            input_features={"age": 68, "cognitive_score": 25.0},
+            prediction_class="MCI",
+            probability=0.45,
+            model_version="v1.2.0"
+        )
+        api_client.force_authenticate(user=patient_user)
+        detail_url = reverse('api:patient_prediction_detail', kwargs={'pk': prediction.id})
+        
+        res = api_client.patch(detail_url, {"review_comments": "Updated self-reported memory latency."}, format='json')
+        assert res.status_code == status.HTTP_200_OK
+        assert res.data['review_comments'] == "Updated self-reported memory latency."
+
+
+
 

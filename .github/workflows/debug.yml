@@ -1,0 +1,104 @@
+name: 🛠️ GitHub Debug & Health Diagnostic
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_filter:
+        description: 'Specific pytest filter (e.g. TestRolePermissions or empty for all)'
+        required: false
+        default: ''
+      run_migrations_check:
+        description: 'Check for missing migrations (dry-run)'
+        required: true
+        type: boolean
+        default: true
+      enable_verbose_logging:
+        description: 'Enable verbose pytest and Django debug logging'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  debug-diagnostics:
+    name: 🩺 Run Diagnostics & Debug Suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: alz_test_db
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    env:
+      DJANGO_SETTINGS_MODULE: alz_predictor.settings.dev
+      SECRET_KEY: debug-secret-key-for-github-diagnostics
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/alz_test_db
+      REDIS_URL: redis://localhost:6379/1
+      CELERY_BROKER_URL: redis://localhost:6379/0
+      CELERY_RESULT_BACKEND: redis://localhost:6379/0
+      DEBUG: "True"
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: 📦 Install project dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-django pytest-mock
+
+      - name: 🔍 Django System Check
+        run: |
+          python manage.py check --settings=alz_predictor.settings.dev
+
+      - name: 📑 Verify Migrations Consistency
+        if: ${{ inputs.run_migrations_check }}
+        run: |
+          python manage.py makemigrations --check --dry-run
+          python manage.py migrate --noinput
+
+      - name: 🧪 Execute Debug Test Suite
+        run: |
+          FILTER="${{ inputs.test_filter }}"
+          if [ -n "$FILTER" ]; then
+            pytest -k "$FILTER" -v --tb=short
+          else
+            pytest -v --tb=short
+          fi
+
+      - name: 📊 System Telemetry & Model Artifact Check
+        run: |
+          python -u -c "
+          import os, django
+          os.environ['DJANGO_SETTINGS_MODULE'] = 'alz_predictor.settings.dev'
+          django.setup()
+          from core.model_loader import predict_alzheimer
+          sample_features = {'age': 70, 'cognitive_score': 22.0, 'bmi': 25.0, 'family_history': True}
+          print('Sample Prediction:', predict_alzheimer(sample_features))
+          "
