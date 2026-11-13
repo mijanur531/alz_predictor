@@ -26,6 +26,8 @@
     --nuv-text-dark: #0f172a;
     --nuv-text-muted: #64748b;
     --nuv-text-light: #94a3b8;
+    --nuv-text-on-card: #f8fafc;
+    --nuv-muted-on-card: #e2e8f0;
     
     --nuv-shadow-sm: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
     --nuv-shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
@@ -54,6 +56,16 @@ body {
     flex-direction: column;
     overflow-x: hidden;
     letter-spacing: -0.01em;
+}
+
+.glass-card {
+    --bs-secondary-color: var(--nuv-muted-on-card);
+    color: var(--nuv-text-on-card);
+}
+
+.glass-card .text-muted,
+.glass-card .form-label {
+    color: var(--nuv-muted-on-card) !important;
 }
 
 /* Nuvica Hero Gradient Section */
@@ -481,6 +493,8 @@ body {
 }
 
 .login-card {
+    --nuv-text-on-card: var(--tech-blue-900);
+    --nuv-muted-on-card: #526b76;
     background: #ffffff;
     border: 1px solid rgba(71, 114, 134, 0.18);
     box-shadow: 0 16px 40px rgba(25, 45, 54, 0.12);
@@ -727,5 +741,122 @@ body {
     .btn:not(.btn-pill):not(.btn-link):not(.btn-close):not(:disabled):hover,
     .btn-pill:hover {
         transform: none;
+    }
+}
+
+/* About and Contact pages */
+.info-page {
+    background:
+        radial-gradient(circle at 8% 6%, rgba(122, 192, 224, 0.3), transparent 28rem),
+        linear-gradient(145deg, #ffffff 0%, #E8F2F7 52%, var(--tech-blue-100) 100%);
+    color: var(--tech-blue-900);
+}
+
+.info-page .glass-card {
+    --nuv-text-on-card: var(--tech-blue-900);
+    --nuv-muted-on-card: #526b76;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(71, 114, 134, 0.2);
+    box-shadow: 0 12px 30px rgba(25, 45, 54, 0.1);
+    color: var(--nuv-text-on-card);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.info-page .glass-card:hover {
+    border-color: rgba(71, 114, 134, 0.36);
+    box-shadow: 0 16px 36px rgba(25, 45, 54, 0.14);
+}
+
+.info-page h1.text-gradient,
+.info-page .text-gradient-cyan {
+    background-image: linear-gradient(110deg, var(--tech-blue-700), var(--tech-blue-500));
+}
+
+.info-page p,
+.info-page li {
+    color: #355766;
+}
+
+.info-page strong {
+    color: var(--tech-blue-900);
+}
+
+.info-page .about-metrics-table {
+    --bs-table-color: var(--tech-blue-900);
+    --bs-table-bg: transparent;
+    --bs-table-striped-color: var(--tech-blue-900);
+    --bs-table-striped-bg: rgba(199, 227, 243, 0.42);
+    --bs-table-border-color: rgba(71, 114, 134, 0.18);
+}
+
+.info-page .about-metrics-table thead th {
+    background: var(--tech-blue-700);
+    color: #ffffff;
+    white-space: nowrap;
+}
+
+.about-page .alert-disclaimer {
+    background: linear-gradient(110deg, #ffffff, var(--tech-blue-100)) !important;
+    border: 1px solid rgba(71, 114, 134, 0.22) !important;
+}
+
+.about-page .alert-disclaimer h3 {
+    color: var(--tech-blue-700) !important;
+}
+
+.contact-page .contact-card {
+    border-top: 4px solid var(--tech-blue-500);
+}
+
+.contact-page .form-label {
+    color: var(--tech-blue-900);
+}
+
+.contact-page .form-check-label {
+    color: var(--tech-blue-700);
+}
+
+.contact-page .form-control {
+    background: #ffffff;
+    border-color: #9cb8c5;
+    color: var(--tech-blue-900);
+}
+
+.contact-page .form-control::placeholder {
+    color: #647d89;
+    opacity: 1;
+}
+
+.contact-page .form-control:focus {
+    background: #ffffff;
+    border-color: var(--tech-blue-500);
+    color: var(--tech-blue-900);
+    box-shadow: 0 0 0 3px rgba(71, 114, 134, 0.2);
+}
+
+.contact-page .form-check-input:checked {
+    background-color: var(--tech-blue-500);
+    border-color: var(--tech-blue-500);
+}
+
+.contact-page .btn-primary-gradient {
+    background: linear-gradient(120deg, var(--tech-blue-500), var(--tech-blue-700), var(--tech-blue-900));
+}
+
+.contact-page .btn-primary-gradient:hover,
+.contact-page .btn-primary-gradient:focus-visible {
+    background: linear-gradient(120deg, var(--tech-blue-700), var(--tech-blue-900));
+    box-shadow: 0 8px 20px rgba(25, 45, 54, 0.24);
+}
+
+@media (max-width: 575.98px) {
+    .info-page {
+        padding-right: 0.75rem;
+        padding-left: 0.75rem;
+    }
+
+    .contact-page .contact-card {
+        padding: 1.5rem !important;
     }
 }

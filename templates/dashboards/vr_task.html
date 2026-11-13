@@ -27,6 +27,50 @@
     .question-btn:hover {
         transform: scale(1.03);
     }
+    #canvasInstructionOverlay {
+        position: absolute;
+        top: 1rem;
+        left: 50%;
+        z-index: 2;
+        width: min(92%, 540px);
+        padding: 1rem 1.25rem;
+        border: 1px solid rgba(199, 227, 243, 0.7);
+        border-radius: 14px;
+        background: linear-gradient(120deg, rgba(25, 45, 54, 0.97), rgba(47, 78, 92, 0.96));
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+        color: #ffffff;
+        text-align: left;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        opacity: 0;
+        visibility: hidden;
+        transform: translate(-50%, -8px);
+        transition: opacity 200ms ease, transform 200ms ease, visibility 200ms ease;
+        pointer-events: none;
+    }
+    #canvasInstructionOverlay.is-visible {
+        opacity: 1;
+        visibility: visible;
+        transform: translate(-50%, 0);
+    }
+    #canvasInstructionOverlay h5 {
+        color: #C7E3F3;
+    }
+    #canvasInstructionOverlay p {
+        color: #ffffff;
+    }
+    @media (max-width: 575.98px) {
+        #canvasInstructionOverlay {
+            top: 0.75rem;
+            width: calc(100% - 1.5rem);
+            padding: 0.8rem 1rem;
+        }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        #canvasInstructionOverlay {
+            transition: none;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -65,11 +109,9 @@
 
             <!-- 3D Canvas Container -->
             <div id="vr-viewport" class="mb-4">
-                <!-- Overlay message inside canvas -->
-                <div class="position-absolute top-50 start-50 translate-middle text-center w-75 p-3 rounded bg-dark bg-opacity-75" 
-                     id="canvasInstructionOverlay" style="border: 1px solid var(--border-color); backdrop-filter: blur(4px);">
-                    <h5 class="fw-bold text-info" id="overlayTitle">Are you ready?</h5>
-                    <p class="small text-muted mb-0" id="overlayDesc">Use WASD, Arrow keys, or the controls below to steer.</p>
+                <div id="canvasInstructionOverlay" class="d-none" role="status" aria-live="polite" aria-atomic="true" aria-hidden="true">
+                    <h5 class="fw-bold mb-1" id="overlayTitle">Are you ready?</h5>
+                    <p class="small mb-0" id="overlayDesc">Use WASD, Arrow keys, or the controls below to steer.</p>
                 </div>
             </div>
 
@@ -122,6 +164,42 @@
         const overlay = document.getElementById('canvasInstructionOverlay');
         const overlayTitle = document.getElementById('overlayTitle');
         const overlayDesc = document.getElementById('overlayDesc');
+        let overlayTimeout = null;
+
+        function showOverlay(title, description, duration = 0) {
+            if (overlayTimeout !== null) {
+                window.clearTimeout(overlayTimeout);
+                overlayTimeout = null;
+            }
+
+            overlayTitle.textContent = title;
+            overlayDesc.textContent = description;
+            overlay.classList.remove('is-visible', 'd-none');
+            overlay.setAttribute('aria-hidden', 'false');
+            window.requestAnimationFrame(() => {
+                if (!overlay.classList.contains('d-none')) {
+                    overlay.classList.add('is-visible');
+                }
+            });
+
+            if (duration > 0) {
+                overlayTimeout = window.setTimeout(() => {
+                    overlay.classList.remove('is-visible');
+                    overlay.setAttribute('aria-hidden', 'true');
+                    overlayTimeout = null;
+                }, duration);
+            }
+        }
+
+        function hideOverlay() {
+            if (overlayTimeout !== null) {
+                window.clearTimeout(overlayTimeout);
+                overlayTimeout = null;
+            }
+            overlay.classList.remove('is-visible');
+            overlay.classList.add('d-none');
+            overlay.setAttribute('aria-hidden', 'true');
+        }
         
         const navControls = document.getElementById('navigationControls');
         const recallBlock = document.getElementById('recallQuestionsBlock');
@@ -186,9 +264,11 @@
             stopTimer();
             gameActive = false;
             
-            overlayTitle.innerText = "Task 1 Cleared!";
-            overlayDesc.innerText = "Target reached. Preparing Task 2: Object Recall...";
-            overlay.classList.remove('d-none');
+            showOverlay(
+                "Task 1 Cleared!",
+                "Target reached. Preparing Task 2: Object Recall...",
+                2000
+            );
             
             setTimeout(() => {
                 startTask2();
@@ -199,7 +279,7 @@
         function startTask2() {
             currentTask = 2;
             taskTitle.innerText = "Task 2: Memorize Object Placements";
-            overlay.classList.add('d-none');
+            hideOverlay();
             navControls.classList.add('d-none');
             
             // Clear task 1 meshes
@@ -237,9 +317,7 @@
             camera.lookAt(0, 0.5, 0);
 
             // Countdown banner
-            overlayTitle.innerText = "Look at the shapes carefully!";
-            overlayDesc.innerText = "They will disappear in 5 seconds.";
-            overlay.classList.remove('d-none');
+            showOverlay("Look at the shapes carefully!", "They will disappear in 5 seconds.");
 
             let countdown = 5;
             const timerLabel = setInterval(() => {
@@ -255,7 +333,7 @@
         // Start Quiz
         function startRecallQuiz() {
             currentTask = 3;
-            overlay.classList.add('d-none');
+            hideOverlay();
             taskTitle.innerText = "Task 3: Memorization Quiz";
 
             // Hide shapes
@@ -408,6 +486,11 @@
             clock = new THREE.Clock();
             gameActive = true;
             startTimer();
+            showOverlay(
+                "Task 1: Spatial Path Memory",
+                "Use WASD, Arrow keys, or the on-screen controls to reach the glowing cube.",
+                2000
+            );
 
             function tick() {
                 requestAnimationFrame(tick);
