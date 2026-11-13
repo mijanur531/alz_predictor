@@ -1,23 +1,22 @@
 {% extends 'base.html' %}
-{% load static %}
-
 {% block title %}AlzPredictor - Intelligent Neurological Health & Doctor Portal{% endblock %}
+{% block body_class %}home-page{% endblock %}
 
 {% block content %}
 <!-- Nuvica Hero Section -->
 <div class="nuvica-hero home-page-hero py-5 px-4 mb-5 shadow-sm">
     <div class="container py-4">
         <div class="row align-items-center g-5">
-            <div class="col-lg-7">
+            <div class="col-lg-9 col-xl-8">
                 <div class="d-inline-flex align-items-center gap-2 px-3 py-1 bg-white rounded-pill shadow-sm mb-3 border">
                     <span class="badge bg-primary-subtle text-primary rounded-pill">New</span>
-                    <span class="small fw-semibold text-dark">3D Hologram Consult & VR Cognitive Battery Active</span>
+                    <span class="small fw-semibold text-dark">AI Cognitive Assessment & Specialist Care</span>
                 </div>
                 <h1 class="display-4 fw-bolder text-dark mb-3 tracking-tight">
                     Smart Neurological Assessment & <span class="text-primary">Specialist Care</span>
                 </h1>
                 <p class="lead text-muted mb-4" style="font-size: 1.15rem; line-height: 1.6;">
-                    AI-powered Alzheimer's risk assessment, interactive 3D clinical holographic consultation, and verified neurological specialist appointment booking.
+                    AI-powered Alzheimer's risk screening, interactive VR cognitive tests, and appointments with verified neurological specialists.
                 </p>
                 <div class="d-flex flex-wrap gap-3 align-items-center">
                     {% if user.is_authenticated %}
@@ -49,7 +48,7 @@
                         </a>
                     {% endif %}
                 </div>
-                <div class="d-flex align-items-center gap-4 mt-4 pt-2 text-muted small">
+                <div class="home-trust-points d-flex flex-wrap align-items-center gap-3 mt-4 pt-2 text-muted small">
                     <div class="d-flex align-items-center gap-1">
                         <span class="text-success fw-bold">✓</span> 98.4% Diagnostic Accuracy
                     </div>
@@ -58,35 +57,6 @@
                     </div>
                     <div class="d-flex align-items-center gap-1">
                         <span class="text-success fw-bold">✓</span> HIPAA/GDPR Aligned
-                    </div>
-                </div>
-            </div>
-            
-            <div class="col-lg-5">
-                <!-- 3D Doctor Hologram Card Widget -->
-                <div class="nuvica-card p-4 bg-white shadow-lg">
-                    <div class="d-flex align-items-center justify-content-between mb-3">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary-subtle text-primary rounded-pill px-3 py-1 fw-bold">AI Clinical Assistant</span>
-                        </div>
-                        <span id="doctorSpeakingBadge" class="badge bg-danger-subtle text-danger rounded-pill d-none">Speaking...</span>
-                    </div>
-                    
-                    <div class="doctor-avatar-3d-container mb-3 position-relative">
-                        <canvas id="doctorAvatarCanvas" class="w-100 h-100"></canvas>
-                    </div>
-
-                    <div id="doctorSpeechBubble" class="speech-bubble mb-3">
-                        <strong>Dr. Evelyn:</strong> "Hello! I am your AI Clinical Specialist. Complete the spatial VR memory task to calibrate your MMSE score, or book a consultation with our verified doctors."
-                    </div>
-
-                    <div class="d-flex gap-2">
-                        <button id="btnSpeakDoctorAdvice" class="btn btn-pill btn-pill-primary btn-pill-sm flex-grow-1">
-                            🔊 Listen to Doctor Voice
-                        </button>
-                        <button id="btnStopDoctorSpeech" class="btn btn-pill btn-pill-light btn-pill-sm">
-                            ⏹️ Mute
-                        </button>
                     </div>
                 </div>
             </div>
@@ -252,8 +222,4 @@
 </div>
 {% endblock %}
 
-{% block extra_js %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="{% static 'js/hospital3D.js' %}"></script>
-{% endblock %}
 

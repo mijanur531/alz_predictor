@@ -3,9 +3,9 @@
     --bg-secondary: #131c2f;
     --bg-card: rgba(30, 41, 59, 0.7);
     --border-color: rgba(255, 255, 255, 0.08);
-    --accent-blue: #3b82f6;
-    --accent-cyan: #06b6d4;
-    --accent-purple: #8b5cf6;
+    --accent-blue: #477286;
+    --accent-cyan: #7AC0E0;
+    --accent-purple: #6098B2;
     --accent-rose: #f43f5e;
     --text-main: #f8fafc;
     --text-muted: #94a3b8;
@@ -36,11 +36,11 @@ body {
 
 .glass-card:hover {
     border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 12px 40px 0 rgba(59, 130, 246, 0.15);
+    box-shadow: 0 12px 40px 0 rgba(71, 114, 134, 0.18);
 }
 
 .glass-nav {
-    background: rgba(11, 15, 25, 0.8) !important;
+    background: rgba(25, 45, 54, 0.88) !important;
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border-color);
 }
@@ -48,12 +48,14 @@ body {
 /* Gradients text */
 .text-gradient {
     background: var(--gradient-glow);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 .text-gradient-cyan {
     background: var(--gradient-glow-2);
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
@@ -71,7 +73,7 @@ body {
     background-color: rgba(15, 23, 42, 0.8);
     border-color: var(--accent-blue);
     color: var(--text-main);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 3px rgba(122, 192, 224, 0.3);
 }
 
 .form-label {
@@ -94,7 +96,7 @@ body {
 .btn-primary-gradient:hover {
     opacity: 0.9;
     transform: translateY(-1px);
-    box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
+    box-shadow: 0 4px 15px rgba(71, 114, 134, 0.4);
 }
 
 .btn-outline-custom {
@@ -113,9 +115,9 @@ body {
 
 /* Alerts and Toast */
 .alert-disclaimer {
-    background-color: rgba(244, 63, 94, 0.1);
-    border: 1px solid rgba(244, 63, 94, 0.2);
-    color: #fda4af;
+    background-color: #C7E3F3;
+    border: 1px solid #7AC0E0;
+    color: #192D36;
     border-radius: 12px;
 }
 
@@ -150,8 +152,8 @@ body {
 
 /* Animations */
 @keyframes pulseGlow {
-    0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.2); }
-    50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.4); }
+    0%, 100% { box-shadow: 0 0 15px rgba(71, 114, 134, 0.2); }
+    50% { box-shadow: 0 0 25px rgba(71, 114, 134, 0.4); }
 }
 
 .glow-card-active {

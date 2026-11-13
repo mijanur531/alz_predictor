@@ -1,20 +1,27 @@
 /* Nuvica & Doctify Modern Medical Theme */
 :root {
-    --nuv-primary: #4f46e5;
-    --nuv-primary-hover: #4338ca;
-    --nuv-primary-soft: #eef2ff;
-    --nuv-secondary: #0d9488;
-    --nuv-secondary-soft: #f0fdf4;
-    --nuv-accent-blue: #0284c7;
-    --nuv-accent-purple: #7c3aed;
+    --tech-blue-100: #C7E3F3;
+    --tech-blue-200: #7AC0E0;
+    --tech-blue-300: #6098B2;
+    --tech-blue-500: #477286;
+    --tech-blue-700: #2F4E5C;
+    --tech-blue-900: #192D36;
+
+    --nuv-primary: var(--tech-blue-500);
+    --nuv-primary-hover: var(--tech-blue-700);
+    --nuv-primary-soft: var(--tech-blue-100);
+    --nuv-secondary: var(--tech-blue-500);
+    --nuv-secondary-soft: #E8F2F7;
+    --nuv-accent-blue: var(--tech-blue-500);
+    --nuv-accent-sky: var(--tech-blue-300);
     --nuv-accent-rose: #e11d48;
     --nuv-accent-amber: #d97706;
     
     --nuv-bg-main: #f8fafc;
     --nuv-bg-card: rgba(255, 255, 255, 0.92);
-    --nuv-bg-hero: linear-gradient(135deg, #f0f4ff 0%, #e8f0fe 40%, #f3e8ff 70%, #ecfeff 100%);
+    --nuv-bg-hero: linear-gradient(135deg, var(--tech-blue-100) 0%, #E8F2F7 45%, var(--tech-blue-200) 100%);
     --nuv-border: #e2e8f0;
-    --nuv-border-focus: #818cf8;
+    --nuv-border-focus: var(--tech-blue-200);
     
     --nuv-text-dark: #0f172a;
     --nuv-text-muted: #64748b;
@@ -23,7 +30,13 @@
     --nuv-shadow-sm: 0 2px 8px -2px rgba(15, 23, 42, 0.05);
     --nuv-shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04);
     --nuv-shadow-lg: 0 20px 35px -10px rgba(15, 23, 42, 0.12), 0 10px 15px -5px rgba(15, 23, 42, 0.04);
-    --nuv-shadow-glow: 0 12px 30px -5px rgba(79, 70, 229, 0.25);
+    --nuv-shadow-glow: 0 12px 30px -5px rgba(71, 114, 134, 0.25);
+
+    --bs-primary: #477286;
+    --bs-primary-rgb: 71, 114, 134;
+    --bs-primary-text-emphasis: #2F4E5C;
+    --bs-primary-bg-subtle: #C7E3F3;
+    --bs-primary-border-subtle: #7AC0E0;
     
     --nuv-radius-sm: 10px;
     --nuv-radius-md: 16px;
@@ -53,8 +66,7 @@ body {
 
 .home-page-hero {
     background:
-        linear-gradient(90deg, rgba(248, 250, 252, 0.58) 0%, rgba(248, 250, 252, 0.40) 52%, rgba(248, 250, 252, 0.24) 100%),
-        url("../images/home-brain-background.jpg") center / cover no-repeat;
+        linear-gradient(135deg, var(--tech-blue-100) 0%, #E8F2F7 45%, var(--tech-blue-200) 100%);
 }
 
 .nuvica-hero::before {
@@ -64,18 +76,94 @@ body {
     right: -20%;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+    background: radial-gradient(circle, rgba(122, 192, 224, 0.2) 0%, rgba(255, 255, 255, 0) 70%);
     border-radius: 50%;
     pointer-events: none;
 }
 
 /* Navigation */
 .nuvica-nav {
-    background: rgba(255, 255, 255, 0.85);
+    --nav-text: #111827;
+    --nav-accent: #1f2937;
+    --nav-start: #d1d5db;
+    --nav-end: #9ca3af;
+    --nav-scroll-start: #9ca3af;
+    --nav-scroll-end: #6b7280;
+    --nav-border: rgba(17, 24, 39, 0.22);
+    --nav-hover: #374151;
+    --nav-button-start: #4b5563;
+    --nav-button-end: #1f2937;
+    --nav-light-button-bg: rgba(255, 255, 255, 0.78);
+    --nav-toggler-filter: none;
+    background: linear-gradient(105deg, var(--nav-start), var(--nav-end));
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
-    border-bottom: 1px solid var(--nuv-border);
-    transition: all 0.3s ease;
+    border-bottom: 1px solid var(--nav-border);
+    box-shadow: 0 6px 20px rgba(17, 24, 39, 0.12);
+    transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.nuvica-nav[data-time-theme="night"] {
+    --nav-text: #ffffff;
+    --nav-accent: #ffe4e6;
+    --nav-start: #be123c;
+    --nav-end: #9f1239;
+    --nav-scroll-start: #9f1239;
+    --nav-scroll-end: #4c0519;
+    --nav-border: rgba(255, 255, 255, 0.3);
+    --nav-hover: #ffe4e6;
+    --nav-button-start: #881337;
+    --nav-button-end: #4c0519;
+    --nav-light-button-bg: rgba(255, 255, 255, 0.14);
+    --nav-toggler-filter: brightness(0) invert(1);
+}
+
+.nuvica-nav.is-scrolled {
+    background: linear-gradient(105deg, var(--nav-scroll-start), var(--nav-scroll-end));
+    border-bottom-color: var(--nav-border);
+    box-shadow: 0 8px 24px rgba(17, 24, 39, 0.24);
+}
+
+.nuvica-nav .navbar-brand .text-dark,
+.nuvica-nav .nav-link,
+.nuvica-nav .nav-link.text-warning,
+.nuvica-nav .nav-link.text-indigo,
+.nuvica-nav .dropdown-toggle {
+    color: var(--nav-text) !important;
+    transition: color 0.2s ease;
+}
+
+.nuvica-nav .navbar-brand .text-primary {
+    color: var(--nav-accent) !important;
+}
+
+.nuvica-nav .nav-link:hover,
+.nuvica-nav .nav-link:focus-visible {
+    color: var(--nav-hover) !important;
+}
+
+.nuvica-nav .nuvica-brand-badge {
+    background: linear-gradient(135deg, var(--nav-button-start), var(--nav-button-end));
+}
+
+.nuvica-nav .btn-pill-primary {
+    background: linear-gradient(135deg, var(--nav-button-start), var(--nav-button-end));
+}
+
+.nuvica-nav .btn-pill-light {
+    background: var(--nav-light-button-bg);
+    color: var(--nav-text) !important;
+    border-color: var(--nav-border);
+}
+
+.nuvica-nav .navbar-toggler-icon {
+    filter: var(--nav-toggler-filter);
+    transition: filter 0.2s ease;
+}
+
+.nuvica-nav .btn-pill:focus-visible {
+    outline: 3px solid var(--nav-accent);
+    outline-offset: 3px;
 }
 
 .nuvica-brand-badge {
@@ -85,10 +173,10 @@ body {
     width: 36px;
     height: 36px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--nuv-primary), var(--nuv-accent-purple));
+    background: linear-gradient(135deg, var(--nuv-primary), var(--nuv-accent-sky));
     color: white;
     font-weight: 700;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+    box-shadow: 0 4px 12px rgba(71, 114, 134, 0.3);
 }
 
 /* Pill Action Buttons */
@@ -107,14 +195,14 @@ body {
 }
 
 .btn-pill-primary {
-    background: linear-gradient(135deg, var(--nuv-primary), #6366f1);
+    background: linear-gradient(135deg, var(--nuv-primary), var(--nuv-primary-hover));
     color: #ffffff !important;
     box-shadow: var(--nuv-shadow-glow);
 }
 
 .btn-pill-primary:hover {
     transform: translateY(-2px);
-    box-shadow: 0 16px 32px -6px rgba(79, 70, 229, 0.35);
+    box-shadow: 0 16px 32px -6px rgba(71, 114, 134, 0.35);
     color: #ffffff !important;
 }
 
@@ -131,11 +219,11 @@ body {
 .btn-pill-secondary {
     background: var(--nuv-secondary-soft);
     color: var(--nuv-secondary) !important;
-    border-color: rgba(13, 148, 136, 0.2);
+    border-color: rgba(96, 152, 178, 0.35);
 }
 
 .btn-pill-secondary:hover {
-    background: var(--nuv-secondary);
+    background: var(--tech-blue-300);
     color: white !important;
     transform: translateY(-2px);
 }
@@ -159,6 +247,19 @@ body {
     font-size: 0.85rem;
 }
 
+.btn:not(.btn-pill):not(.btn-link):not(.btn-close):not(:disabled) {
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.btn:not(.btn-pill):not(.btn-link):not(.btn-close):not(:disabled):hover {
+    transform: translateY(-1px);
+}
+
+.btn:not(.btn-close):focus-visible {
+    outline: 3px solid var(--tech-blue-200);
+    outline-offset: 2px;
+}
+
 /* Glass & Elevated Cards */
 .nuvica-card {
     background: var(--nuv-bg-card);
@@ -172,7 +273,7 @@ body {
 .nuvica-card:hover {
     transform: translateY(-3px);
     box-shadow: var(--nuv-shadow-lg);
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: rgba(122, 192, 224, 0.55);
 }
 
 /* Organ Health Scan Cards */
@@ -213,17 +314,17 @@ body {
 }
 
 .organ-card-brain {
-    background: linear-gradient(145deg, #ffffff 0%, #f5f3ff 100%);
-    border-top: 4px solid var(--nuv-accent-purple);
+    background: linear-gradient(145deg, #ffffff 0%, #E8F2F7 100%);
+    border-top: 4px solid var(--nuv-accent-sky);
 }
 
 .organ-card-liver {
-    background: linear-gradient(145deg, #ffffff 0%, #ecfdf5 100%);
+    background: linear-gradient(145deg, #ffffff 0%, #E8F2F7 100%);
     border-top: 4px solid var(--nuv-secondary);
 }
 
 .organ-card-kidney {
-    background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);
+    background: linear-gradient(145deg, #ffffff 0%, #E8F2F7 100%);
     border-top: 4px solid var(--nuv-accent-blue);
 }
 
@@ -270,7 +371,7 @@ body {
 .doctor-card:hover {
     transform: translateY(-4px);
     box-shadow: var(--nuv-shadow-md);
-    border-color: rgba(79, 70, 229, 0.3);
+    border-color: rgba(71, 114, 134, 0.35);
 }
 
 .doctor-avatar-wrapper {
@@ -365,30 +466,119 @@ body {
 
 .nuvica-input:focus, .form-control.nuvica-input:focus, .form-select.nuvica-input:focus {
     border-color: var(--nuv-primary);
-    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.12);
+    box-shadow: 0 0 0 4px rgba(71, 114, 134, 0.18);
     outline: none;
 }
 
-/* 3D Doctor Avatar Canvas Container */
-.doctor-avatar-3d-container {
-    width: 100%;
-    height: 320px;
-    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
-    border-radius: var(--nuv-radius-lg);
-    position: relative;
-    overflow: hidden;
-    box-shadow: var(--nuv-shadow-lg);
+.alert-disclaimer {
+    background: linear-gradient(100deg, var(--tech-blue-100), #E8F2F7) !important;
+    color: var(--tech-blue-900) !important;
+    border-bottom: 1px solid var(--tech-blue-200) !important;
 }
 
-.speech-bubble {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(8px);
-    border-radius: var(--nuv-radius-md);
-    padding: 14px 18px;
-    color: var(--nuv-text-dark);
-    font-size: 0.9rem;
-    box-shadow: var(--nuv-shadow-md);
-    border: 1px solid var(--nuv-border);
+.login-container {
+    max-width: 100%;
+}
+
+.login-card {
+    background: #ffffff;
+    border: 1px solid rgba(71, 114, 134, 0.18);
+    box-shadow: 0 16px 40px rgba(25, 45, 54, 0.12);
+}
+
+.login-card h2 {
+    color: var(--tech-blue-900);
+}
+
+.login-card .form-label {
+    color: var(--tech-blue-900);
+}
+
+.login-card .form-control {
+    background: #ffffff;
+    border-color: #9cb8c5;
+    color: var(--tech-blue-900);
+}
+
+.login-card .form-control::placeholder {
+    color: #647d89;
+    opacity: 1;
+}
+
+.login-card .form-control:focus {
+    border-color: var(--tech-blue-500);
+    box-shadow: 0 0 0 3px rgba(71, 114, 134, 0.2);
+}
+
+.login-page a.text-info {
+    color: var(--tech-blue-700) !important;
+}
+
+.clinical-chatbot #chatbot-window {
+    color: var(--tech-blue-900);
+    background: linear-gradient(145deg, #ffffff 0%, #f5fafc 52%, var(--tech-blue-100) 100%) !important;
+    border-color: rgba(71, 114, 134, 0.35) !important;
+    box-shadow: 0 20px 50px rgba(25, 45, 54, 0.24);
+}
+
+.clinical-chatbot #chatbot-window > div:first-child {
+    background: linear-gradient(105deg, #ffffff, var(--tech-blue-100)) !important;
+    border-color: rgba(71, 114, 134, 0.2) !important;
+}
+
+.clinical-chatbot #chatbot-messages {
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(199, 227, 243, 0.68));
+}
+
+.clinical-chatbot #chatbot-messages .bg-secondary {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.clinical-chatbot #chatbot-window .text-light {
+    color: var(--tech-blue-900) !important;
+}
+
+.clinical-chatbot #chatbot-window .text-muted {
+    color: #496572 !important;
+}
+
+.clinical-chatbot #chatbot-window .text-gradient-cyan {
+    background-image: linear-gradient(110deg, var(--tech-blue-700), var(--tech-blue-500));
+}
+
+.clinical-chatbot #chatbot-window .border-secondary {
+    border-color: rgba(71, 114, 134, 0.24) !important;
+}
+
+.clinical-chatbot #chatbot-window .btn-outline-info {
+    border-color: var(--tech-blue-500);
+    color: var(--tech-blue-700);
+}
+
+.clinical-chatbot #chatbot-window .btn-outline-info:hover,
+.clinical-chatbot #chatbot-window .btn-outline-info:focus-visible {
+    background-color: var(--tech-blue-500);
+    color: #ffffff;
+}
+
+.clinical-chatbot #chatbot-window > div:last-child {
+    background: linear-gradient(105deg, #ffffff, var(--tech-blue-100)) !important;
+    border-color: rgba(71, 114, 134, 0.24) !important;
+}
+
+.clinical-chatbot #chatbot-input {
+    color: var(--tech-blue-900);
+    background: #ffffff !important;
+    border-color: rgba(71, 114, 134, 0.45) !important;
+}
+
+.clinical-chatbot #chatbot-input::placeholder {
+    color: #647d89;
+    opacity: 1;
+}
+
+.clinical-chatbot #chatbot-close-btn {
+    color: var(--tech-blue-700) !important;
 }
 
 /* VR Task Canvas */
@@ -415,4 +605,127 @@ body {
     padding: 20px 24px;
     background: #f8fafc;
     border-radius: var(--nuv-radius-lg) var(--nuv-radius-lg) 0 0;
+}
+
+/* Homepage blue palette and dimensional headings */
+.home-page-hero {
+    background:
+        radial-gradient(circle at 82% 18%, rgba(122, 192, 224, 0.28), transparent 32%),
+        linear-gradient(
+            112deg,
+            var(--tech-blue-900) 0%,
+            var(--tech-blue-700) 34%,
+            var(--tech-blue-500) 100%
+        );
+}
+
+.home-page-hero h1 {
+    color: #f8fafc !important;
+    text-shadow:
+        0 1px 0 rgba(226, 244, 255, 0.75),
+        0 2px 0 rgba(4, 25, 48, 0.82),
+        0 4px 0 rgba(4, 25, 48, 0.58),
+        0 9px 18px rgba(0, 0, 0, 0.34);
+}
+
+.home-page-hero h1 .text-primary {
+    color: var(--tech-blue-100) !important;
+    text-shadow:
+        0 1px 0 rgba(255, 255, 255, 0.55),
+        0 2px 0 rgba(25, 45, 54, 0.85),
+        0 5px 0 rgba(25, 45, 54, 0.55),
+        0 9px 18px rgba(0, 0, 0, 0.3);
+}
+
+.home-page-hero .text-muted {
+    color: #edf7fb !important;
+}
+
+.home-page-hero .d-inline-flex.bg-white {
+    background: rgba(248, 250, 252, 0.94) !important;
+}
+
+.home-page-hero .btn-pill-primary {
+    background: linear-gradient(135deg, var(--tech-blue-500), var(--tech-blue-700), var(--tech-blue-900));
+    box-shadow: 0 10px 24px rgba(25, 45, 54, 0.32);
+}
+
+.organ-diagnostics-section {
+    background: linear-gradient(
+        110deg,
+        var(--tech-blue-900) 0%,
+        var(--tech-blue-700) 30%,
+        var(--tech-blue-500) 100%
+    );
+    border: 1px solid rgba(199, 227, 243, 0.5);
+}
+
+.diagnostics-title,
+.specialists-title {
+    color: #ffffff !important;
+    text-shadow:
+        0 1px 0 rgba(199, 227, 243, 0.6),
+        0 2px 0 rgba(25, 45, 54, 0.7),
+        0 4px 8px rgba(25, 45, 54, 0.35);
+}
+
+.diagnostics-eyebrow,
+.specialists-eyebrow {
+    color: var(--tech-blue-100);
+    font-style: normal;
+    text-shadow: none;
+}
+
+.specialists-section {
+    background: linear-gradient(
+        110deg,
+        var(--tech-blue-900) 0%,
+        var(--tech-blue-700) 30%,
+        var(--tech-blue-500) 100%
+    );
+    border: 1px solid rgba(199, 227, 243, 0.5);
+}
+
+@media (max-width: 575.98px) {
+    .home-page .home-page-hero {
+        padding-right: 1rem !important;
+        padding-left: 1rem !important;
+    }
+
+    .home-page .home-page-hero h1 {
+        font-size: clamp(2rem, 8vw, 2.65rem);
+        line-height: 1.12;
+    }
+
+    .home-page .home-trust-points > div {
+        flex: 0 0 100%;
+    }
+
+    .home-page .organ-diagnostics-section,
+    .home-page .specialists-section {
+        padding: 1.25rem 0.75rem;
+        border-radius: 18px;
+    }
+
+    .home-page .organ-diagnostics-section > .d-flex,
+    .home-page .specialists-section > .d-flex {
+        align-items: flex-start !important;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .nuvica-nav,
+    .nuvica-nav .nav-link,
+    .nuvica-nav .navbar-toggler-icon,
+    .btn,
+    .btn-pill {
+        transition: none !important;
+    }
+
+    .btn:not(.btn-pill):not(.btn-link):not(.btn-close):not(:disabled):hover,
+    .btn-pill:hover {
+        transform: none;
+    }
 }

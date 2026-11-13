@@ -1,6 +1,8 @@
 from datetime import timedelta
+import re
 
 import pytest
+from django.conf import settings
 from django.test import override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -523,6 +525,16 @@ def test_password_reset_api_is_non_enumerating(api_client):
     existing_response = api_client.post(url, {"email": user.email}, format="json")
     assert existing_response.status_code == status.HTTP_200_OK
     assert len(mail.outbox) == 1
+    reset_email = mail.outbox[0]
+    assert reset_email.to == [user.email]
+    assert reset_email.from_email == settings.DEFAULT_FROM_EMAIL
+    assert reset_email.subject == "Reset your AlzPredictor password"
+
+    reset_link = re.search(r"http://testserver(/reset/\S+)", reset_email.body)
+    assert reset_link is not None
+    reset_response = api_client.get(reset_link.group(1))
+    assert reset_response.status_code == status.HTTP_302_FOUND
+    assert api_client.get(reset_response.url).status_code == status.HTTP_200_OK
 
     success_message = existing_response.data["detail"]
     mail.outbox.clear()

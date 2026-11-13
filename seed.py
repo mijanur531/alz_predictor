@@ -100,14 +100,14 @@ def seed_data():
             "available_hours": "08:30 AM - 04:30 PM"
         },
         {
-            "name": "Dr. Marcus Vance",
+            "name": "Dr. Ashik Iqbal",
             "specialty": "Vascular Neurology & Cerebrovascular Health",
             "department": "Cardiology",
             "qualification": "MD, FACC - Stanford University",
             "experience_years": 19,
             "rating": 4.95,
             "consultation_fee": 210,
-            "avatar_url": "https://images.unsplash.com/photo-1537368910025-700350fe46c7?auto=format&fit=crop&w=400&q=80",
+            "avatar_url": "/static/images/doctor_ashik.jpg",
             "email": "marcus.vance@alzpredictor.com",
             "phone": "+1 (555) 456-7890",
             "bio": "Investigates cardiovascular flow interplay with cognitive decline and microvascular pathology.",
@@ -149,7 +149,7 @@ def seed_data():
     doctor_objs = []
     for doc in doctors_data:
         obj, _ = Doctor.objects.update_or_create(
-            name=doc["name"],
+            email=doc["email"],
             defaults=doc
         )
         doctor_objs.append(obj)
