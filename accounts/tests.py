@@ -192,3 +192,22 @@ def test_password_reset_flow(client):
     complete_response = client.get(reverse("password_reset_complete"))
     assert b"content=\"5;url=/login/\"" in complete_response.content
 
+
+@pytest.mark.django_db
+def test_api_token_page_requires_login_and_generates_tokens(client):
+    user = User.objects.create_user(
+        username="token_page_user",
+        password="InitialPassword123!",
+        role="patient",
+    )
+
+    response = client.get(reverse("api_token_page"))
+    assert response.status_code == 302
+    assert reverse("login") in response.url
+
+    client.force_login(user)
+    response = client.post(reverse("api_token_page"))
+    assert response.status_code == 200
+    assert b"access-token" in response.content
+    assert b"refresh-token" in response.content
+

@@ -3,12 +3,23 @@
 {% block title %}Contact Us - AlzPredictor{% endblock %}
 
 {% block content %}
-<section class="info-page contact-page py-5">
-    <div class="container">
-        <div class="row justify-content-center">
-            <div class="col-md-8 col-lg-6">
-                <div class="glass-card contact-card p-5">
-                    <h1 class="h2 fw-bold text-center mb-4 text-gradient">Contact Support / Clinic</h1>
+<section class="info-page contact-page">
+    <div class="container page-section">
+        <div class="row g-4 align-items-start">
+            <div class="col-lg-5">
+                <div class="info-hero">
+                    <span class="eyebrow">Support and triage</span>
+                    <h1 class="display-6 fw-bold mt-2 mb-3">Contact the care team</h1>
+                    <p class="lead text-muted">Send a question to the platform team or flag an operational message for priority review.</p>
+                    <div class="info-card p-4 mt-4">
+                        <h2 class="h5 fw-bold">When to use a critical alert</h2>
+                        <p class="text-muted mb-0">Use the critical option for urgent platform or care-coordination issues. This form is not an emergency service.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-7">
+                <div class="info-card p-4 p-md-5">
+                    <h2 class="h3 fw-bold mb-4">Send a message</h2>
 
                     <form method="post" id="contactForm">
                         {% csrf_token %}
@@ -16,21 +27,24 @@
                         <div class="mb-3">
                             <label for="{{ form.name.id_for_label }}" class="form-label">Full Name</label>
                             {{ form.name }}
+                            {{ form.name.errors }}
                         </div>
 
                         <div class="mb-3">
                             <label for="{{ form.email.id_for_label }}" class="form-label">Email Address</label>
                             {{ form.email }}
+                            {{ form.email.errors }}
                         </div>
 
                         <div class="mb-3">
                             <label for="{{ form.message.id_for_label }}" class="form-label">Message Details</label>
                             {{ form.message }}
+                            {{ form.message.errors }}
                         </div>
 
                         <div class="form-check mb-4">
                             {{ form.is_critical }}
-                            <label class="form-check-label fw-semibold" for="is_critical_checkbox">
+                            <label class="form-check-label text-warning fw-semibold" for="is_critical_checkbox">
                                 {{ form.is_critical.label }}
                             </label>
                         </div>

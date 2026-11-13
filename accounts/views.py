@@ -4,6 +4,7 @@ from django.views.generic import TemplateView, CreateView, ListView
 from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from appointments.models import Doctor
 from patients.models import PredictionRecord, ContactMessage
@@ -222,6 +223,18 @@ class ContactView(CreateView):
             messages.success(self.request, "Message received. Our team will contact you shortly.")
             
         return response
+
+
+class JWTTokenPageView(LoginRequiredMixin, TemplateView):
+    template_name = 'accounts/token.html'
+
+    def post(self, request, *args, **kwargs):
+        refresh = RefreshToken.for_user(request.user)
+        context = self.get_context_data(
+            access_token=str(refresh.access_token),
+            refresh_token=str(refresh),
+        )
+        return self.render_to_response(context)
 
 
 class VRTaskView(LoginRequiredMixin, PatientRequiredMixin, TemplateView):

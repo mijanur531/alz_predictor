@@ -71,6 +71,28 @@
             transition: none;
         }
     }
+    .memory-box {
+        min-height: 76px;
+        background: rgba(15, 23, 42, 0.88);
+        border-width: 2px;
+        position: relative;
+    }
+    .memory-box-number {
+        font-size: 1.15rem;
+        font-weight: 700;
+    }
+    .memory-ball {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: block;
+        margin: 5px auto 0;
+        box-shadow: 0 0 12px currentColor;
+    }
+    .memory-box.placed {
+        border-color: #22d3ee;
+        background: rgba(8, 145, 178, 0.35);
+    }
 </style>
 {% endblock %}
 
@@ -85,7 +107,7 @@
             <p class="lead text-muted mb-4">
                 Welcome! This is a simple, friendly 3D challenge designed to test spatial navigation and object recall. Completing this task will automatically fill in the cognitive score on your patient baseline.
             </p>
-            
+
             <div class="row justify-content-center g-3 text-start mb-4">
                 <div class="col-md-5 glass-card p-3 m-2">
                     <strong class="text-info">Step 1: Spatial Path navigation</strong>
@@ -113,10 +135,24 @@
                     <h5 class="fw-bold mb-1" id="overlayTitle">Are you ready?</h5>
                     <p class="small mb-0" id="overlayDesc">Use WASD, Arrow keys, or the controls below to steer.</p>
                 </div>
+                <div id="memoryBoard" class="position-absolute top-50 start-50 translate-middle d-none w-75">
+                    <p class="text-center text-info fw-semibold mb-2" id="memoryPrompt">
+                        Memorize each ball's numbered box.
+                    </p>
+                    <div class="row row-cols-3 g-2" id="memoryBoxes">
+                        {% for box_number in "123456789" %}
+                        <button type="button" class="col btn btn-outline-info memory-box" data-slot="{{ box_number }}">
+                            <span class="memory-box-number">{{ box_number }}</span>
+                            <span class="memory-ball d-none" aria-hidden="true"></span>
+                        </button>
+                        {% endfor %}
+                    </div>
+                    <p class="small text-center text-light mt-2 mb-0" id="memoryBallIndicator"></p>
+                </div>
             </div>
 
             <!-- Task 1: Navigation Controls (Visible only in Task 1) -->
-            <div id="navigationControls" class="text-center mb-3">
+            <div id="navigationControls" class="text-center mb-3 d-none">
                 <p class="text-muted small mb-2">Guide the blue ball to the glowing turquoise cube!</p>
                 <div class="d-inline-block">
                     <div>
@@ -200,6 +236,11 @@
             overlay.classList.add('d-none');
             overlay.setAttribute('aria-hidden', 'true');
         }
+
+        const memoryBoard = document.getElementById('memoryBoard');
+        const memoryPrompt = document.getElementById('memoryPrompt');
+        const memoryBallIndicator = document.getElementById('memoryBallIndicator');
+        const memoryBoxes = [...document.querySelectorAll('.memory-box')];
         
         const navControls = document.getElementById('navigationControls');
         const recallBlock = document.getElementById('recallQuestionsBlock');
@@ -216,12 +257,96 @@
         let currentTask = 1; // 1 = Navigation, 2 = Object Recall Memorization, 3 = Recall Quiz
         let secondsElapsed = 0.0;
         let timerInterval = null;
+        let memoryTimeout = null;
+        let memorySequence = [];
+        let placementIndex = 0;
+        let memoryPhase = 'memorize';
         
         // Performance Telemetry
         let score = 100;
         let navigationErrors = 0; // Out of path bounds occurrences
         let quizErrors = 0;
         let timeTaken = 0;
+
+        const ballColors = [
+            '#f43f5e', '#fb923c', '#facc15', '#4ade80', '#22d3ee',
+            '#60a5fa', '#818cf8', '#c084fc', '#f472b6',
+        ];
+
+        function shuffle(values) {
+            return [...values].sort(() => Math.random() - 0.5);
+        }
+
+        function resetMemoryBoard() {
+            memoryBoxes.forEach((box) => {
+                box.classList.remove('placed');
+                const ball = box.querySelector('.memory-ball');
+                ball.classList.add('d-none');
+                ball.style.backgroundColor = '';
+            });
+        }
+
+        function startMemoryGame() {
+            currentTask = 1;
+            memoryPhase = 'memorize';
+            placementIndex = 0;
+            memorySequence = shuffle(
+                Array.from({ length: 9 }, (_, index) => index + 1),
+            );
+            resetMemoryBoard();
+            memoryBoard.classList.remove('d-none');
+            memoryPrompt.innerText = 'Memorize each ball position. You have up to 2 minutes.';
+            memoryBallIndicator.innerText = '';
+            memorySequence.forEach((slot, ballIndex) => {
+                const box = memoryBoxes.find((item) => item.dataset.slot === String(slot));
+                const ball = box.querySelector('.memory-ball');
+                ball.classList.remove('d-none');
+                ball.style.backgroundColor = ballColors[ballIndex];
+                ball.setAttribute('aria-label', `Ball ${ballIndex + 1}`);
+            });
+            startTimer();
+            memoryTimeout = setTimeout(beginBallPlacement, 120000);
+        }
+
+        function beginBallPlacement() {
+            if (memoryPhase !== 'memorize') return;
+            memoryPhase = 'place';
+            memoryBoxes.forEach((box) => {
+                box.querySelector('.memory-ball').classList.add('d-none');
+            });
+            placementIndex = 0;
+            memoryPrompt.innerText = 'Place each ball in the numbered box where you remember seeing it.';
+            showNextBall();
+        }
+
+        function showNextBall() {
+            if (placementIndex >= memorySequence.length) {
+                finishGame();
+                return;
+            }
+            const color = ballColors[placementIndex];
+            memoryBallIndicator.innerText = `Place ball ${placementIndex + 1} of 9`;
+            memoryBallIndicator.style.color = color;
+            memoryBallIndicator.style.textShadow = `0 0 10px ${color}`;
+        }
+
+        memoryBoxes.forEach((box) => {
+            box.addEventListener('click', () => {
+                if (!gameActive || memoryPhase !== 'place') return;
+                const selectedSlot = Number(box.dataset.slot);
+                const expectedSlot = memorySequence[placementIndex];
+                if (selectedSlot !== expectedSlot) {
+                    quizErrors++;
+                    score = Math.max(10, score - 10);
+                    memoryPrompt.innerText = 'That is not the remembered position. Try again.';
+                    return;
+                }
+                box.classList.add('placed');
+                placementIndex++;
+                memoryPrompt.innerText = 'Correct. Continue placing the remaining balls.';
+                showNextBall();
+            });
+        });
 
         function startTimer() {
             secondsElapsed = 0.0;
@@ -241,7 +366,7 @@
         const pathBoundary = 3.5; // Boundary limits
 
         function steerPlayer(dx, dz) {
-            if (!gameActive || currentTask !== 1) return;
+            if (!gameActive || currentTask !== 1 || memoryPhase !== 'navigation') return;
             playerBall.position.x += dx * 0.25;
             playerBall.position.z += dz * 0.25;
             
@@ -384,6 +509,9 @@
         };
 
         function finishGame() {
+            gameActive = false;
+            clearTimeout(memoryTimeout);
+            memoryBoard.classList.add('d-none');
             recallBlock.classList.add('d-none');
             gameplayCard.classList.add('d-none');
             submittingCard.classList.remove('d-none');
@@ -423,6 +551,11 @@
         function initVRMaze() {
             onboardingCard.classList.add('d-none');
             gameplayCard.classList.remove('d-none');
+            showOverlay(
+                "How to play",
+                "Memorize the nine balls and their numbered boxes. After they vanish, place each ball back in its exact box.",
+                2000
+            );
             
             const viewport = document.getElementById('vr-viewport');
             
@@ -446,76 +579,29 @@
             light.position.set(5, 10, 5);
             scene.add(light);
             
-            // Pathway (Road line - Box Geometry)
+            // Background grid for the memory task.
             const pathGeom = new THREE.BoxGeometry(6, 0.1, 15);
             const pathMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
             pathwayLine = new THREE.Mesh(pathGeom, pathMat);
             pathwayLine.position.set(0, -0.1, -4);
             scene.add(pathwayLine);
 
-            // Left boundary rail (Red)
-            const railL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 15), new THREE.MeshLambertMaterial({color: 0xef4444}));
-            railL.position.set(-3, 0.25, -4);
-            scene.add(railL);
-            
-            // Right boundary rail (Red)
-            const railR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.5, 15), new THREE.MeshLambertMaterial({color: 0xef4444}));
-            railR.position.set(3, 0.25, -4);
-            scene.add(railR);
-
             // Grid lines on road
             const gridHelper = new THREE.GridHelper(15, 15, 0x334155, 0x1e293b);
             gridHelper.position.y = 0.01;
             scene.add(gridHelper);
 
-            // Player Ball (Sphere Geometry)
-            const playerGeom = new THREE.SphereGeometry(0.5, 32, 32);
-            const playerMat = new THREE.MeshLambertMaterial({ color: 0x3b82f6 });
-            playerBall = new THREE.Mesh(playerGeom, playerMat);
-            playerBall.position.set(0, 0.5, 2);
-            scene.add(playerBall);
-            
-            // Checkpoint Goal (Cube Geometry)
-            const goalGeom = new THREE.BoxGeometry(1.2, 1.2, 1.2);
-            const goalMat = new THREE.MeshLambertMaterial({ color: 0x06b6d4, emissive: 0x0891b2 });
-            targetCube = new THREE.Mesh(goalGeom, goalMat);
-            targetCube.position.set(0, 0.6, -9);
-            scene.add(targetCube);
-            
             // Game loop
             clock = new THREE.Clock();
             gameActive = true;
-            startTimer();
-            showOverlay(
-                "Task 1: Spatial Path Memory",
-                "Use WASD, Arrow keys, or the on-screen controls to reach the glowing cube.",
-                2000
-            );
+            startMemoryGame();
 
             function tick() {
                 requestAnimationFrame(tick);
                 const elapsed = clock.getElapsedTime();
                 
-                // Spin target box to look inviting
-                targetCube.rotation.y += 0.02;
-                targetCube.rotation.x += 0.015;
-                
-                // Float target box
-                targetCube.position.y = 0.6 + Math.sin(elapsed * 2.0) * 0.15;
-                
-                // Let camera follow player slightly
-                camera.position.x = playerBall.position.x * 0.5;
-                camera.lookAt(playerBall.position.x * 0.2, 0.5, playerBall.position.z - 2);
-
-                // Animate floating items if in Task 2
-                if (currentTask === 2) {
-                    if (shapeLeft) shapeLeft.rotation.y += 0.015;
-                    if (shapeCenter) shapeCenter.rotation.x += 0.015;
-                    if (shapeRight) {
-                        shapeRight.rotation.y += 0.01;
-                        shapeRight.rotation.z += 0.01;
-                    }
-                }
+                camera.position.x = Math.sin(elapsed * 0.25) * 0.2;
+                camera.lookAt(0, 0.5, -2);
 
                 renderer.render(scene, camera);
             }

@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 from accounts.models import User, PatientProfile, ServiceProviderProfile
 from patients.models import PredictionRecord, ContactMessage
-from management.models import AuditLog
+from management.models import AuditLog, ApiTestRun
 
 @pytest.fixture
 def api_client():
@@ -68,6 +68,22 @@ class TestRolePermissions:
         url = reverse('api:patient_predictions')
         res = api_client.get(url)
         assert res.status_code == status.HTTP_200_OK
+
+    def test_api_root_lists_operational_endpoints(self, api_client):
+        response = api_client.get("/api/")
+        assert response.status_code == status.HTTP_200_OK
+        payload = response.json()
+        assert payload["api"] == "/api/v1/"
+        assert payload["schema"] == "/api/schema/"
+
+    def test_api_operations_are_management_only(self, api_client, patient_user):
+        api_client.force_authenticate(user=patient_user)
+        response = api_client.post(
+            reverse("api:api-tests-list"),
+            {"operation": "health"},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
 
     def test_patient_cannot_access_management_stats(self, api_client, patient_user):
         api_client.force_authenticate(user=patient_user)
@@ -378,6 +394,23 @@ class TestModelArtifactActivation:
 
 
 @pytest.mark.django_db
+def test_management_user_can_run_allowlisted_api_test(api_client, manager_user):
+    api_client.force_authenticate(user=manager_user)
+    response = api_client.post(
+        reverse("api:api-tests-list"),
+        {"operation": "api_root"},
+        format="json",
+    )
+    assert response.status_code == status.HTTP_201_CREATED
+    assert response.data["operation"] == "api_root"
+    assert response.data["status"] == "passed"
+    assert ApiTestRun.objects.filter(
+        executed_by=manager_user,
+        operation="api_root",
+    ).exists()
+
+
+@pytest.mark.django_db
 @pytest.mark.django_db
 class TestChatbotRAGREST:
     def test_chatbot_query_general(self, api_client):
@@ -546,6 +579,44 @@ def test_password_reset_api_is_non_enumerating(api_client):
     assert unknown_response.status_code == status.HTTP_200_OK
     assert unknown_response.data["detail"] == success_message
     assert len(mail.outbox) == 0
+
+
+@pytest.mark.django_db
+def test_jwt_login_uses_httponly_cookie_and_cookie_auth(api_client, patient_user):
+    login_response = api_client.post(
+        reverse("api:jwt_login"),
+        {"username": patient_user.username, "password": "password123"},
+        format="json",
+    )
+
+    assert login_response.status_code == status.HTTP_200_OK
+    assert "jwt_access" not in login_response.cookies
+    assert login_response.cookies["access_token"]["httponly"]
+
+    api_client.cookies["access_token"] = login_response.cookies["access_token"].value
+    current_user_response = api_client.get(reverse("api:current_user"))
+    assert current_user_response.status_code == status.HTTP_200_OK
+    assert current_user_response.data["username"] == patient_user.username
+
+
+@pytest.mark.django_db
+def test_jwt_login_validates_credentials_and_cookie_lifetimes(api_client, patient_user):
+    invalid_response = api_client.post(
+        reverse("api:jwt_login"),
+        {"username": patient_user.username},
+        format="json",
+    )
+    assert invalid_response.status_code == status.HTTP_400_BAD_REQUEST
+    assert "password" in invalid_response.data
+
+    login_response = api_client.post(
+        reverse("api:jwt_login"),
+        {"username": patient_user.username, "password": "password123"},
+        format="json",
+    )
+    assert login_response.status_code == status.HTTP_200_OK
+    assert login_response.cookies["access_token"]["max-age"] == 900
+    assert login_response.cookies["refresh_token"]["max-age"] == 86400
 
 
 

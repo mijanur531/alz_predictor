@@ -1,4 +1,4 @@
-from django.core.mail import send_mail
+from django.core.mail import send_mail, send_mass_mail
 from django.conf import settings
 from django.urls import reverse
 from smtplib import SMTPException
@@ -9,6 +9,22 @@ logger = logging.getLogger(__name__)
 
 def _absolute_url(path):
     return f"{settings.SITE_URL.rstrip('/')}{path}"
+
+
+def send_bulk_email(subject, message, recipients, from_email=None):
+    """Deliver one private message per recipient using the configured backend."""
+    unique_recipients = list(dict.fromkeys(email.strip() for email in recipients if email and email.strip()))
+    if not unique_recipients:
+        return 0
+
+    sender = from_email or settings.DEFAULT_FROM_EMAIL
+    batch_size = max(1, getattr(settings, "BULK_EMAIL_BATCH_SIZE", 50))
+    sent_count = 0
+    for start in range(0, len(unique_recipients), batch_size):
+        batch = unique_recipients[start:start + batch_size]
+        messages = [(subject, message, sender, [recipient]) for recipient in batch]
+        sent_count += send_mass_mail(messages, fail_silently=False)
+    return sent_count
 
 
 def send_welcome_email(user):
@@ -30,7 +46,7 @@ def send_welcome_email(user):
         recipient_list = [user.email] if user.email else []
         
         if recipient_list:
-            send_mail(subject, message, from_email, recipient_list)
+            send_bulk_email(subject, message, recipient_list, from_email)
             logger.info("Welcome email dispatched for user %s", user.pk)
             return True
     except (OSError, SMTPException):
@@ -64,7 +80,7 @@ def send_prediction_report_email(user, prediction_record):
         recipient_list = [user.email] if user.email else []
         
         if recipient_list:
-            send_mail(subject, message, from_email, recipient_list)
+            send_bulk_email(subject, message, recipient_list, from_email)
             logger.info("Prediction report email sent for user %s", user.pk)
             return True
     except (OSError, SMTPException):

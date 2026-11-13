@@ -10,6 +10,7 @@ from appointments.models import Doctor, Appointment
 from appointments.forms import APPOINTMENT_TIME_SLOTS
 from prescriptions.models import PrescriptionScan
 from training.models import TrainedModelArtifact
+from management.models import ApiTestRun
 
 
 class PasswordResetRequestSerializer(serializers.Serializer):
@@ -31,6 +32,29 @@ class PasswordResetRequestSerializer(serializers.Serializer):
         return validated_data
 
 
+class DetailResponseSerializer(serializers.Serializer):
+    detail = serializers.CharField()
+
+
+class CSRFTokenResponseSerializer(serializers.Serializer):
+    csrfToken = serializers.CharField()
+
+
+class JWTLoginSerializer(serializers.Serializer):
+    username = serializers.CharField(max_length=150, trim_whitespace=True)
+    password = serializers.CharField(
+        max_length=128,
+        trim_whitespace=False,
+        write_only=True,
+    )
+
+
+class JWTLoginResponseSerializer(serializers.Serializer):
+    access = serializers.CharField()
+    refresh = serializers.CharField()
+    user = serializers.DictField()
+
+
 class StrictTextField(serializers.CharField):
     def to_internal_value(self, data):
         if not isinstance(data, str):
@@ -50,6 +74,52 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'role', 'first_name', 'last_name')
+
+
+class CurrentUserResponseSerializer(UserSerializer):
+    profile = serializers.JSONField(required=False, read_only=True)
+
+    class Meta(UserSerializer.Meta):
+        fields = UserSerializer.Meta.fields + ('profile',)
+
+
+class TaskAcceptedResponseSerializer(serializers.Serializer):
+    task_id = serializers.CharField()
+    status = serializers.CharField()
+    status_url = serializers.CharField(required=False)
+
+
+class ContactSubmitResponseSerializer(serializers.Serializer):
+    message = serializers.CharField()
+    is_critical = serializers.BooleanField()
+
+
+class ApiTestRunSerializer(serializers.ModelSerializer):
+    executed_by_username = serializers.CharField(
+        source="executed_by.username",
+        read_only=True,
+    )
+
+    class Meta:
+        model = ApiTestRun
+        fields = (
+            "id",
+            "operation",
+            "endpoint",
+            "method",
+            "status",
+            "response_status",
+            "duration_ms",
+            "details",
+            "executed_by",
+            "executed_by_username",
+            "created_at",
+        )
+        read_only_fields = fields
+
+
+class ApiTestRunRequestSerializer(serializers.Serializer):
+    operation = serializers.ChoiceField(choices=ApiTestRun.CHECK_CHOICES)
 
 
 class PatientProfileSerializer(serializers.ModelSerializer):
@@ -144,7 +214,7 @@ class PredictionRecordSerializer(serializers.ModelSerializer):
                   'reviewed_by', 'reviewed_by_name', 'review_comments', 'is_reviewed', 'created_at')
         read_only_fields = ('id', 'patient', 'prediction_class', 'probability', 'model_version', 'reviewed_by', 'created_at')
 
-    def get_patient_fullname(self, obj):
+    def get_patient_fullname(self, obj) -> str:
         return obj.patient.user.get_full_name() or obj.patient.user.username
 
 
@@ -179,9 +249,9 @@ class AppointmentSerializer(serializers.ModelSerializer):
         fields = ('id', 'patient', 'patient_username', 'patient_fullname', 'doctor',
                   'doctor_name', 'doctor_specialty', 'doctor_department', 'doctor_avatar',
                   'appointment_date', 'time_slot', 'reason', 'status', 'created_at', 'updated_at')
-        read_only_fields = ('id', 'patient', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'patient', 'status', 'created_at', 'updated_at')
 
-    def get_patient_fullname(self, obj):
+    def get_patient_fullname(self, obj) -> str:
         return obj.patient.user.get_full_name() or obj.patient.user.username
 
 
@@ -235,9 +305,11 @@ class VRTestRecordSerializer(serializers.ModelSerializer):
         model = VRTestRecord
         fields = ('id', 'patient', 'patient_username', 'time_taken', 'errors', 'score',
                   'cognitive_score_equivalent', 'created_at')
-        read_only_fields = ('id', 'patient', 'created_at')
+        read_only_fields = (
+            'id', 'patient', 'time_taken', 'errors', 'score', 'created_at',
+        )
 
-    def get_cognitive_score_equivalent(self, obj):
+    def get_cognitive_score_equivalent(self, obj) -> float:
         return round((obj.score / 100.0) * 30.0, 1)
 
 
@@ -260,14 +332,20 @@ class PrescriptionScanSerializer(serializers.ModelSerializer):
     class Meta:
         model = PrescriptionScan
         fields = ('id', 'patient', 'patient_username', 'uploaded_image', 'raw_text', 'detected_medicines', 'llm_analysis', 'created_at')
-        read_only_fields = ('id', 'patient', 'raw_text', 'detected_medicines', 'llm_analysis', 'created_at')
+        read_only_fields = (
+            'id', 'patient', 'uploaded_image', 'raw_text', 'detected_medicines',
+            'llm_analysis', 'created_at',
+        )
 
 
 class TrainedModelArtifactSerializer(serializers.ModelSerializer):
     class Meta:
         model = TrainedModelArtifact
         fields = ('id', 'name', 'model_type', 'hyperparameters', 'metrics', 'is_active', 'created_at')
-        read_only_fields = ('id', 'name', 'metrics', 'created_at')
+        read_only_fields = (
+            'id', 'name', 'model_type', 'hyperparameters', 'metrics',
+            'is_active', 'created_at',
+        )
 
 
 class TrainingTriggerSerializer(serializers.Serializer):
