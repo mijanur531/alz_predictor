@@ -7,13 +7,25 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView,
 )
-from health_check.views import HealthCheckView
+from core.health import ApplicationHealthCheckView
+from django.http import JsonResponse
+
+
+def api_root(request):
+    return JsonResponse({
+        "version": "v1",
+        "api": "/api/v1/",
+        "health": "/api/health/",
+        "schema": "/api/schema/",
+        "docs": "/api/docs/",
+    })
 
 urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
 
     # ─── Core API v1 ──────────────────────────────────────────
+    path('api/', api_root, name='api-root'),
     path('api/v1/', include('api.urls')),
 
     # ─── Legacy / template-based views ────────────────────────
@@ -23,7 +35,7 @@ urlpatterns = [
     path('', include('training.urls')),
 
     # ─── Health Check ──────────────────────────────────────────
-    path('api/health/', HealthCheckView.as_view(), name='health-check'),
+    path('api/health/', ApplicationHealthCheckView.as_view(), name='health-check'),
 
     # ─── OpenAPI / Swagger Docs ────────────────────────────────
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

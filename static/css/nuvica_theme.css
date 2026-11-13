@@ -1,4 +1,4 @@
-/* Nuvica & Doctify Modern Medical Theme */
+run/* Nuvica & Doctify Modern Medical Theme */
 :root {
     --tech-blue-100: #C7E3F3;
     --tech-blue-200: #7AC0E0;
@@ -16,6 +16,10 @@
     --nuv-accent-sky: var(--tech-blue-300);
     --nuv-accent-rose: #e11d48;
     --nuv-accent-amber: #d97706;
+    --nuv-button-hover-start: #c7e3f3;
+    --nuv-button-hover-end: #7ac0e0;
+    --nuv-button-hover-border: #6098b2;
+    --nuv-button-hover-text: #192d36;
     
     --nuv-bg-main: #f8fafc;
     --nuv-bg-card: rgba(255, 255, 255, 0.92);
@@ -426,6 +430,109 @@ body {
     font-weight: 600;
     background: var(--nuv-primary-soft);
     color: var(--nuv-primary);
+}
+
+/* Responsive informational pages */
+.page-section {
+    padding: 4rem 0;
+}
+
+.info-hero {
+    max-width: 760px;
+}
+
+.eyebrow {
+    color: var(--nuv-primary);
+    font-family: 'Inter', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.info-card {
+    background: var(--nuv-bg-card);
+    border: 1px solid var(--nuv-border);
+    border-radius: var(--nuv-radius-lg);
+    box-shadow: var(--nuv-shadow-md);
+}
+
+.notice-card {
+    background: #fff7ed;
+    border: 1px solid #fed7aa;
+    border-radius: var(--nuv-radius-lg);
+    color: #7c2d12;
+}
+
+.content-list {
+    padding-left: 1.25rem;
+}
+
+.content-list li + li {
+    margin-top: 0.75rem;
+}
+
+.token-output {
+    font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.token-access-page {
+    min-height: calc(100vh - 150px);
+    background: linear-gradient(
+        110deg,
+        #c7e3f3 0%,
+        #7ac0e0 20%,
+        #6098b2 40%,
+        #477286 60%,
+        #2f4e5c 80%,
+        #192d36 100%
+    );
+}
+
+.token-access-page .info-card {
+    background: rgba(255, 255, 255, 0.94);
+    border-color: rgba(255, 255, 255, 0.72);
+}
+
+.token-access-page .btn-primary-gradient {
+    background: linear-gradient(135deg, #477286, #192d36);
+}
+
+/* Consistent hover state for actionable buttons */
+.btn:not(:disabled):not(.btn-close):not(.dropdown-toggle):not(.btn-link):hover,
+.btn-primary-gradient:not(:disabled):hover,
+.btn-pill-primary:not(:disabled):hover,
+.btn-pill-secondary:not(:disabled):hover,
+.btn-pill-light:not(:disabled):hover,
+.btn-outline-custom:not(:disabled):hover {
+    background: linear-gradient(
+        135deg,
+        var(--nuv-button-hover-start),
+        var(--nuv-button-hover-end)
+    ) !important;
+    border-color: var(--nuv-button-hover-border) !important;
+    color: var(--nuv-button-hover-text) !important;
+}
+
+.btn:not(:disabled):not(.btn-close):not(.dropdown-toggle):not(.btn-link):hover {
+    box-shadow: 0 8px 18px rgba(71, 114, 134, 0.28);
+}
+
+@media (max-width: 767.98px) {
+    .page-section {
+        padding: 2.5rem 0;
+    }
+
+    .page-section .display-5,
+    .page-section .display-6 {
+        font-size: 2.25rem;
+    }
+
+    .page-section .table {
+        min-width: 620px;
+    }
 }
 
 /* Badge System */

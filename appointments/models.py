@@ -28,6 +28,25 @@ class Doctor(models.Model):
     available_hours = models.CharField(max_length=50, default="09:00 AM - 05:00 PM")
     is_active = models.BooleanField(default=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=("is_active", "department", "name"), name="doctor_directory_idx"),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(experience_years__gte=0),
+                name="doctor_experience_nonnegative",
+            ),
+            models.CheckConstraint(
+                condition=Q(rating__gte=0) & Q(rating__lte=5),
+                name="doctor_rating_0_5",
+            ),
+            models.CheckConstraint(
+                condition=Q(consultation_fee__gte=0),
+                name="doctor_fee_nonnegative",
+            ),
+        ]
+
     def __str__(self):
         return f"{self.name} ({self.specialty})"
 
@@ -50,6 +69,10 @@ class Appointment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        indexes = [
+            models.Index(fields=("patient", "-appointment_date"), name="appointment_patient_date_idx"),
+            models.Index(fields=("doctor", "appointment_date"), name="appointment_doctor_date_idx"),
+        ]
         constraints = [
             models.UniqueConstraint(
                 fields=("doctor", "appointment_date", "time_slot"),

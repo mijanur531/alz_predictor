@@ -2,16 +2,19 @@ from rest_framework import status, views, viewsets, generics, permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
+from django.conf import settings
 from django.db.models import Count
 from celery.result import AsyncResult
 from django.utils import timezone
+from django.test import Client
+from time import monotonic
 
 from accounts.models import User, PatientProfile
 from patients.models import PredictionRecord, ContactMessage, VRTestRecord
 from appointments.models import Doctor, Appointment
 from prescriptions.models import PrescriptionScan
 from training.models import TrainedModelArtifact
-from management.models import AuditLog
+from management.models import AuditLog, ApiTestRun
 from patients.tasks import run_prediction_task, process_contact_message
 from training.tasks import run_model_training_task
 from prescriptions.views import CLINICAL_DRUG_DATABASE
@@ -34,11 +37,22 @@ from .serializers import (
     TrainedModelArtifactSerializer,
     TrainingTriggerSerializer,
     PasswordResetRequestSerializer,
+    JWTLoginSerializer,
+    JWTLoginResponseSerializer,
+    CSRFTokenResponseSerializer,
+    CurrentUserResponseSerializer,
+    DetailResponseSerializer,
+    TaskAcceptedResponseSerializer,
+    ContactSubmitResponseSerializer,
+    ApiTestRunSerializer,
+    ApiTestRunRequestSerializer,
     ChatbotQuerySerializer,
 )
 
 # Custom Throttles
 from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema
 
 class PredictThrottle(UserRateThrottle):
     scope = 'predict'
@@ -47,10 +61,24 @@ class ContactThrottle(AnonRateThrottle):
     scope = 'contact'
 
 
+class PasswordResetThrottle(AnonRateThrottle):
+    scope = 'password_reset'
+
+
+class RegisterThrottle(AnonRateThrottle):
+    scope = 'register'
+
+
+class JWTLoginThrottle(AnonRateThrottle):
+    scope = 'jwt_login'
+
+
 class PasswordResetRequestView(views.APIView):
     authentication_classes = ()
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (PasswordResetThrottle,)
 
+    @extend_schema(request=PasswordResetRequestSerializer, responses=DetailResponseSerializer)
     def post(self, request):
         serializer = PasswordResetRequestSerializer(
             data=request.data,
@@ -76,6 +104,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegisterSerializer
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (RegisterThrottle,)
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -101,6 +130,7 @@ class CurrentUserView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated,)
 
+    @extend_schema(responses=CurrentUserResponseSerializer)
     def get(self, request):
         user = request.user
         data = UserSerializer(user).data
@@ -117,6 +147,7 @@ class CSRFTokenView(views.APIView):
     """
     permission_classes = (permissions.AllowAny,)
 
+    @extend_schema(responses=CSRFTokenResponseSerializer)
     def get(self, request):
         from django.middleware.csrf import get_token
         token = get_token(request)
@@ -131,13 +162,17 @@ class JWTLoginView(views.APIView):
     while also setting secure HttpOnly JWT cookies.
     """
     permission_classes = (permissions.AllowAny,)
+    throttle_classes = (JWTLoginThrottle,)
 
+    @extend_schema(request=JWTLoginSerializer, responses=JWTLoginResponseSerializer)
     def post(self, request):
         from django.contrib.auth import authenticate
         from rest_framework_simplejwt.tokens import RefreshToken
 
-        username = request.data.get("username")
-        password = request.data.get("password")
+        serializer = JWTLoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
         user = authenticate(request, username=username, password=password)
         if not user:
             return Response({"detail": "Invalid username or password credentials."}, status=status.HTTP_401_UNAUTHORIZED)
@@ -152,9 +187,25 @@ class JWTLoginView(views.APIView):
             "user": UserSerializer(user).data
         }, status=status.HTTP_200_OK)
 
-        response.set_cookie('access_token', access_token, httponly=True, samesite='Lax', max_age=3600)
-        response.set_cookie('jwt_access', access_token, httponly=False, samesite='Lax', max_age=3600)
-        response.set_cookie('refresh_token', refresh_token, httponly=True, samesite='Lax', max_age=86400)
+        secure_cookie = getattr(settings, 'SESSION_COOKIE_SECURE', not settings.DEBUG)
+        access_max_age = int(settings.SIMPLE_JWT['ACCESS_TOKEN_LIFETIME'].total_seconds())
+        refresh_max_age = int(settings.SIMPLE_JWT['REFRESH_TOKEN_LIFETIME'].total_seconds())
+        response.set_cookie(
+            'access_token',
+            access_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite='Lax',
+            max_age=access_max_age,
+        )
+        response.set_cookie(
+            'refresh_token',
+            refresh_token,
+            httponly=True,
+            secure=secure_cookie,
+            samesite='Lax',
+            max_age=refresh_max_age,
+        )
 
         # Audit log login
         AuditLog.objects.create(
@@ -171,7 +222,9 @@ class JWTLogoutView(views.APIView):
     Clears JWT and session authentication cookies.
     """
     permission_classes = (permissions.AllowAny,)
+    serializer_class = DetailResponseSerializer
 
+    @extend_schema(responses=DetailResponseSerializer)
     def post(self, request):
         response = Response({"message": "Successfully logged out and cleared JWT cookies."}, status=status.HTTP_200_OK)
         response.delete_cookie('access_token')
@@ -186,6 +239,7 @@ class ChatbotQueryView(views.APIView):
     """
     permission_classes = (permissions.AllowAny,)
 
+    @extend_schema(request=ChatbotQuerySerializer, responses=OpenApiTypes.OBJECT)
     def post(self, request):
         serializer = ChatbotQuerySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -207,12 +261,16 @@ class PatientPredictionsView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated, IsPatient)
 
+    @extend_schema(responses=PredictionRecordSerializer(many=True))
     def get(self, request):
         patient_profile = request.user.patient_profile
-        predictions = PredictionRecord.objects.filter(patient=patient_profile).order_by('-created_at')
+        predictions = PredictionRecord.objects.filter(
+            patient=patient_profile,
+        ).select_related('patient__user').order_by('-created_at')
         serializer = PredictionRecordSerializer(predictions, many=True)
         return Response(serializer.data)
 
+    @extend_schema(request=PredictInputSerializer, responses=TaskAcceptedResponseSerializer)
     def post(self, request):
         # Allow triggering prediction via predictions endpoint directly
         serializer = PredictInputSerializer(data=request.data)
@@ -242,11 +300,14 @@ class PatientPredictionDetailView(views.APIView):
     Detail & Delete endpoints for patient predictions.
     """
     permission_classes = (permissions.IsAuthenticated, IsPatient)
+    serializer_class = PredictionRecordSerializer
 
+    @extend_schema(responses=PredictionRecordSerializer)
     def get(self, request, pk):
         prediction = get_object_or_404(PredictionRecord, pk=pk, patient=request.user.patient_profile)
         return Response(PredictionRecordSerializer(prediction).data)
 
+    @extend_schema(responses=DetailResponseSerializer)
     def delete(self, request, pk):
         prediction = get_object_or_404(PredictionRecord, pk=pk, patient=request.user.patient_profile)
         prediction_id = prediction.id
@@ -259,6 +320,7 @@ class PatientPredictionDetailView(views.APIView):
         )
         return Response({"detail": "Prediction record deleted successfully."}, status=status.HTTP_200_OK)
 
+    @extend_schema(request=PredictionRecordReviewSerializer, responses=PredictionRecordSerializer)
     def patch(self, request, pk):
         prediction = get_object_or_404(PredictionRecord, pk=pk, patient=request.user.patient_profile)
         comments = request.data.get('review_comments')
@@ -267,8 +329,15 @@ class PatientPredictionDetailView(views.APIView):
             prediction.save(update_fields=['review_comments'])
         return Response(PredictionRecordSerializer(prediction).data, status=status.HTTP_200_OK)
 
+    @extend_schema(operation_id="patient_prediction_delete", responses=DetailResponseSerializer)
     def post(self, request, pk):
         # Support POST method for deletion (e.g. /predict/<id>/delete/)
+        return self.delete(request, pk)
+
+
+class PatientPredictionDeleteView(PatientPredictionDetailView):
+    @extend_schema(operation_id="prediction_delete", responses=DetailResponseSerializer)
+    def post(self, request, pk):
         return self.delete(request, pk)
 
 
@@ -281,6 +350,7 @@ class PredictTriggerView(views.APIView):
     permission_classes = (permissions.IsAuthenticated, IsPatient)
     throttle_classes = (PredictThrottle,)
 
+    @extend_schema(request=PredictInputSerializer, responses=TaskAcceptedResponseSerializer)
     def post(self, request):
         serializer = PredictInputSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -310,6 +380,7 @@ class PredictStatusView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated, IsPatient)
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request, task_id):
         res = AsyncResult(task_id)
         response_data = {
@@ -331,9 +402,12 @@ class ServiceCasesView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated, IsDoctorOrNurse)
 
+    @extend_schema(responses=PredictionRecordSerializer(many=True))
     def get(self, request):
         is_reviewed_param = request.query_params.get('is_reviewed')
-        predictions = PredictionRecord.objects.all().order_by('-created_at')
+        predictions = PredictionRecord.objects.select_related(
+            'patient__user', 'reviewed_by',
+        ).order_by('-created_at')
         
         if is_reviewed_param is not None:
             is_reviewed = is_reviewed_param.lower() in ('true', '1')
@@ -349,6 +423,7 @@ class ServiceReviewCaseView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated, IsDoctorOrNurse)
 
+    @extend_schema(request=PredictionRecordReviewSerializer, responses=PredictionRecordSerializer)
     def patch(self, request, pk):
         prediction = get_object_or_404(PredictionRecord, pk=pk)
         serializer = PredictionRecordReviewSerializer(prediction, data=request.data, partial=True)
@@ -378,6 +453,7 @@ class ManagementStatsView(views.APIView):
     """
     permission_classes = (permissions.IsAuthenticated, IsManagement)
 
+    @extend_schema(responses=OpenApiTypes.OBJECT)
     def get(self, request):
         total_predictions = PredictionRecord.objects.count()
         class_counts = PredictionRecord.objects.values('prediction_class').annotate(count=Count('id'))
@@ -408,7 +484,9 @@ class ManagementStatsView(views.APIView):
         ]
 
         # Get recent predictions
-        recent_preds = PredictionRecord.objects.all().order_by('-created_at')[:8]
+        recent_preds = PredictionRecord.objects.select_related(
+            'patient__user', 'reviewed_by',
+        ).order_by('-created_at')[:8]
         preds_serialized = PredictionRecordSerializer(recent_preds, many=True).data
 
         return Response({
@@ -421,6 +499,50 @@ class ManagementStatsView(views.APIView):
         })
 
 
+class ApiTestRunViewSet(viewsets.ModelViewSet):
+    permission_classes = (permissions.IsAuthenticated, IsManagement)
+    serializer_class = ApiTestRunSerializer
+    http_method_names = ["get", "post", "head", "options"]
+
+    def get_queryset(self):
+        return ApiTestRun.objects.select_related("executed_by").all()
+
+    @extend_schema(
+        request=ApiTestRunRequestSerializer,
+        responses=ApiTestRunSerializer,
+    )
+    def create(self, request, *args, **kwargs):
+        request_serializer = ApiTestRunRequestSerializer(data=request.data)
+        request_serializer.is_valid(raise_exception=True)
+        operation = request_serializer.validated_data["operation"]
+        checks = {
+            "api_root": "/api/",
+            "health": "/api/health/",
+            "schema": "/api/schema/",
+        }
+        endpoint = checks[operation]
+        started = monotonic()
+        response = Client().get(endpoint)
+        duration_ms = max(0, round((monotonic() - started) * 1000))
+        passed = 200 <= response.status_code < 300
+        run = ApiTestRun.objects.create(
+            operation=operation,
+            endpoint=endpoint,
+            status="passed" if passed else "failed",
+            response_status=response.status_code,
+            duration_ms=duration_ms,
+            details={
+                "expected_status": "2xx",
+                "actual_status": response.status_code,
+            },
+            executed_by=request.user,
+        )
+        return Response(
+            ApiTestRunSerializer(run).data,
+            status=status.HTTP_201_CREATED if passed else status.HTTP_424_FAILED_DEPENDENCY,
+        )
+
+
 class ContactSubmitView(views.APIView):
     """
     Public endpoint to submit general/critical contact message.
@@ -428,12 +550,14 @@ class ContactSubmitView(views.APIView):
     permission_classes = (permissions.AllowAny,)
     throttle_classes = (ContactThrottle,)
 
+    @extend_schema(responses=ContactMessageSerializer(many=True))
     def get(self, request):
         if not request.user.is_authenticated or request.user.role not in ('doctor', 'nurse', 'management', 'technician'):
             return Response({"detail": "Authentication required."}, status=status.HTTP_401_UNAUTHORIZED)
         messages = ContactMessage.objects.all().order_by('-created_at')
         return Response(ContactMessageSerializer(messages, many=True).data)
 
+    @extend_schema(request=ContactMessageSerializer, responses=ContactSubmitResponseSerializer)
     def post(self, request):
         serializer = ContactMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -477,11 +601,16 @@ class AppointmentViewSet(viewsets.ModelViewSet):
     """
     serializer_class = AppointmentSerializer
     permission_classes = (permissions.IsAuthenticated, IsPatient)
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         if not hasattr(self.request.user, 'patient_profile'):
             return Appointment.objects.none()
-        return Appointment.objects.filter(patient=self.request.user.patient_profile).order_by('-appointment_date', '-created_at')
+        return Appointment.objects.filter(
+            patient=self.request.user.patient_profile,
+        ).select_related('patient__user', 'doctor').order_by(
+            '-appointment_date', '-created_at',
+        )
 
     def create(self, request, *args, **kwargs):
         serializer = AppointmentCreateSerializer(data=request.data, context={'request': request})
@@ -523,11 +652,14 @@ class VRTaskViewSet(viewsets.ModelViewSet):
     """
     serializer_class = VRTestRecordSerializer
     permission_classes = (permissions.IsAuthenticated, IsPatient)
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
 
     def get_queryset(self):
         if not hasattr(self.request.user, 'patient_profile'):
             return VRTestRecord.objects.none()
-        return VRTestRecord.objects.filter(patient=self.request.user.patient_profile).order_by('-created_at')
+        return VRTestRecord.objects.filter(
+            patient=self.request.user.patient_profile,
+        ).select_related('patient__user').order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         serializer = VRTaskSubmitSerializer(data=request.data)
@@ -582,13 +714,16 @@ class PrescriptionScanViewSet(viewsets.ModelViewSet):
     """
     serializer_class = PrescriptionScanSerializer
     permission_classes = (permissions.IsAuthenticated, IsPatient)
+    http_method_names = ['get', 'post', 'delete', 'head', 'options']
     from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
     parser_classes = (MultiPartParser, FormParser, JSONParser)
 
     def get_queryset(self):
         if not hasattr(self.request.user, 'patient_profile'):
             return PrescriptionScan.objects.none()
-        return PrescriptionScan.objects.filter(patient=self.request.user.patient_profile).order_by('-created_at')
+        return PrescriptionScan.objects.filter(
+            patient=self.request.user.patient_profile,
+        ).select_related('patient__user').order_by('-created_at')
 
     def create(self, request, *args, **kwargs):
         from PIL import Image
@@ -676,6 +811,7 @@ class ModelTrainingViewSet(viewsets.ModelViewSet):
     """
     serializer_class = TrainedModelArtifactSerializer
     permission_classes = (permissions.IsAuthenticated, IsManagement)
+    http_method_names = ['get', 'post', 'head', 'options']
 
     def get_queryset(self):
         return TrainedModelArtifact.objects.all().order_by('-created_at')

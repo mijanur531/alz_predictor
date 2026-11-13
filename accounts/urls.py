@@ -10,7 +10,8 @@ from .views import (
     ManagementDashboardView,
     AboutView,
     ContactView,
-    VRTaskView
+    VRTaskView,
+    JWTTokenPageView,
 )
 
 urlpatterns = [
@@ -59,4 +60,5 @@ urlpatterns = [
     # Pages
     path('about/', AboutView.as_view(), name='about'),
     path('contact/', ContactView.as_view(), name='contact'),
+    path('api-token/', JWTTokenPageView.as_view(), name='api_token_page'),
 ]

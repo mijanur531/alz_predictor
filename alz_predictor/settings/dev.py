@@ -5,12 +5,18 @@ DEBUG = True
 # Windows compatibility: exclude daphne from INSTALLED_APPS in dev to prevent Twisted reactor deadlock
 INSTALLED_APPS = [app for app in INSTALLED_APPS if app != 'daphne']
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+# Use PostgreSQL whenever DATABASE_URL is configured. SQLite remains available
+# only as a dependency-free fallback for contributors without a local database.
+DATABASES = (
+    {'default': env.db('DATABASE_URL')}
+    if env('DATABASE_URL', default='')
+    else {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
     }
-}
+)
 
 import socket
 

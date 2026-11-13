@@ -136,8 +136,11 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'anon': '100/day',
         'user': '1000/day',
+        'register': '10/hour',
+        'jwt_login': '10/minute',
         'predict': '10/minute',
         'contact': '5/minute',
+        'password_reset': '5/hour',
     },
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
@@ -168,7 +171,7 @@ SPECTACULAR_SETTINGS = {
 
 # SimpleJWT configuration
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': False,
@@ -220,13 +223,15 @@ EMAIL_BACKEND = env.str('EMAIL_BACKEND', default='django.core.mail.backends.cons
 DEFAULT_FROM_EMAIL = env.str('DEFAULT_FROM_EMAIL', default='no-reply@alzpredictor.com')
 STAFF_ALERT_EMAILS = env.list('STAFF_ALERT_EMAILS', default=['staff@alzpredictor.com', 'doctor@alzpredictor.com'])
 SITE_URL = env.str('SITE_URL', default='http://127.0.0.1:8000')
-EMAIL_HOST = env.str('EMAIL_HOST', default='')
-EMAIL_PORT = env.int('EMAIL_PORT', default=587)
+EMAIL_HOST = env.str('EMAIL_HOST', default='smtp.gmail.com')
+EMAIL_PORT = env.int('EMAIL_PORT', default=465)
 EMAIL_HOST_USER = env.str('EMAIL_HOST_USER', default='')
 EMAIL_HOST_PASSWORD = env.str('EMAIL_HOST_PASSWORD', default='')
-EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=True)
-EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=False)
+EMAIL_USE_TLS = env.bool('EMAIL_USE_TLS', default=False)
+EMAIL_USE_SSL = env.bool('EMAIL_USE_SSL', default=True)
 EMAIL_TIMEOUT = env.int('EMAIL_TIMEOUT', default=10)
+BULK_EMAIL_BATCH_SIZE = env.int('BULK_EMAIL_BATCH_SIZE', default=50)
+HEALTH_CHECK_INCLUDE_DNS = env.bool('HEALTH_CHECK_INCLUDE_DNS', default=False)
 
 # Authentication URL redirects
 LOGIN_URL = 'login'

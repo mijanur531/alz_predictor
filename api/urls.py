@@ -14,6 +14,7 @@ from .views import (
     ChatbotQueryView,
     PatientPredictionsView,
     PatientPredictionDetailView,
+    PatientPredictionDeleteView,
     PredictTriggerView,
     PredictStatusView,
     DoctorViewSet,
@@ -25,6 +26,7 @@ from .views import (
     ServiceReviewCaseView,
     ManagementStatsView,
     ContactSubmitView,
+    ApiTestRunViewSet,
     PasswordResetRequestView,
 )
 
@@ -36,11 +38,13 @@ router.register('appointments', AppointmentViewSet, basename='appointments')
 router.register('vr-tasks', VRTaskViewSet, basename='vr-tasks')
 router.register('prescriptions', PrescriptionScanViewSet, basename='prescriptions')
 router.register('training', ModelTrainingViewSet, basename='training')
+router.register('operations/api-tests', ApiTestRunViewSet, basename='api-tests')
 
 urlpatterns = [
     # Auth Endpoints
     path('auth/register/', RegisterView.as_view(), name='register'),
     path('auth/password-reset/', PasswordResetRequestView.as_view(), name='password_reset_request'),
+    path('auth/password-reset/resend/', PasswordResetRequestView.as_view(), name='password_reset_resend'),
     path('auth/csrf/', CSRFTokenView.as_view(), name='csrf_token'),
     path('auth/token/', TokenObtainPairView.as_view(), name='token_obtain'),
     path('auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
@@ -55,7 +59,7 @@ urlpatterns = [
     path('patients/me/predictions/<int:pk>/', PatientPredictionDetailView.as_view(), name='patient_prediction_detail'),
     path('predict/', PredictTriggerView.as_view(), name='predict_trigger'),
     path('predict/status/<str:task_id>/', PredictStatusView.as_view(), name='predict_status'),
-    path('predict/<int:pk>/delete/', PatientPredictionDetailView.as_view(), name='predict_delete'),
+    path('predict/<int:pk>/delete/', PatientPredictionDeleteView.as_view(), name='predict_delete'),
     
     # Appointments Specific Endpoints
     path('appointments/doctors/', DoctorViewSet.as_view({'get': 'list'}), name='appointments_doctors'),

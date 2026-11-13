@@ -9,5 +9,10 @@ class PrescriptionScan(models.Model):
     llm_analysis = models.TextField(blank=True, help_text="Clinical recommendations from LLM")
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        indexes = [
+            models.Index(fields=("patient", "-created_at"), name="rx_patient_created_idx"),
+        ]
+
     def __str__(self):
         return f"Scan for {self.patient.user.username} on {self.created_at.strftime('%Y-%m-%d')}"
